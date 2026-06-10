@@ -111,7 +111,7 @@ body {
   background: #fff; border: 1px solid #dddbda;
   border-top: none; border-radius: 0 0 6px 6px;
   z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,.18);
-  display: none; max-height: 400px; overflow-y: auto;
+  display: none; max-height: 520px; overflow-y: auto;
   min-width: 420px;
 }
 .search-dropdown.open { display: block; }
@@ -143,9 +143,9 @@ body {
 
 /* Compact dropdown row (generational member search) */
 .dd-item-compact {
-  padding: 7px 12px; cursor: pointer;
+  padding: 4px 10px; cursor: pointer;
   border-bottom: 1px solid #f3f2f2;
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 8px;
   transition: background 0.1s;
 }
 .dd-item-compact:last-child { border-bottom: none; }
@@ -765,7 +765,7 @@ function renderGenerational() {
   // ── Main form ──────────────────────────────────────────
   const totalAUM    = g.selected.reduce((s,h)=>s+h.aum, 0);
   const meetsMin    = totalAUM >= GEN_THRESHOLD;
-  const canCreate   = meetsMin && g.attested && g.selected.length >= 2 && g.hhName.trim();
+  const canCreate   = g.attested && g.selected.length >= 2 && g.hhName.trim();
   const selectedIds = new Set(g.selected.map(h=>h.id));
 
   // Member-search dropdown
@@ -841,10 +841,13 @@ function renderGenerational() {
           Select at least 2 households. Combined AUM must reach ${fmtUSD(GEN_THRESHOLD)}.
         </p>
       </div>
-      <button class="btn btn-success" style="white-space:nowrap;flex-shrink:0"
-              onclick="genCreate()" ${canCreate ? '' : 'disabled style="opacity:.45;cursor:not-allowed"'}>
-        + Create Household
-      </button>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+        <button class="btn btn-success" style="white-space:nowrap"
+                onclick="genCreate()" ${canCreate ? '' : 'disabled style="opacity:.45;cursor:not-allowed"'}>
+          + Create Household
+        </button>
+        ${g.createError ? `<span style="color:#c23934;font-size:.75rem;font-weight:600;max-width:220px;text-align:right">${escHtml(g.createError)}</span>` : ''}
+      </div>
     </div>
 
     <div class="field">
@@ -931,8 +934,8 @@ function renderGenerational() {
          </div>`}
     ` : ''}
 
-    <!-- Attestation (appears once threshold met + 2+ members) -->
-    ${meetsMin && g.selected.length >= 2 ? `
+    <!-- Attestation (appears once 2+ members selected) -->
+    ${g.selected.length >= 2 ? `
     <hr class="divider" />
     <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.75rem">3. Attestation</p>
     <div class="attestation-box">
@@ -1011,7 +1014,13 @@ function genCreate() {
   const g = app.gen;
   const totalAUM = g.selected.reduce((s,h)=>s+h.aum,0);
   const meetsMin = totalAUM >= GEN_THRESHOLD;
-  if (!g.hhName.trim() || !meetsMin || !g.attested || g.selected.length < 2) return;
+  if (!g.hhName.trim() || !g.attested || g.selected.length < 2) return;
+  if (!meetsMin) {
+    g.createError = `Combined AUM of ${fmtUSD(totalAUM)} is below the ${fmtUSD(GEN_THRESHOLD)} minimum threshold.`;
+    render();
+    return;
+  }
+  g.createError = '';
   const id = 'gen_' + Date.now();
   const now = new Date().toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
   saveHousehold({
@@ -1034,7 +1043,7 @@ function genDeleteSaved(id) {
 }
 
 function genReset() {
-  app.gen = { hhName:'', searchVal:'', pendingIds:new Set(), selected:[], attested:false, created:false, lookupVal:'', viewingId:null };
+  app.gen = { hhName:'', searchVal:'', pendingIds:new Set(), selected:[], attested:false, created:false, lookupVal:'', viewingId:null, createError:'' };
   render();
 }
 
