@@ -1,1 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Advisory Pricing Calculator</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Salesforce Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f3f2f2;
+  color: #181818;
+  font-size: 0.875rem;
+  min-height: 100vh;
+}
 
+/* ── App bar ── */
+.app-bar {
+  background: #0070d2;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  gap: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,.2);
+}
+.app-bar-icon {
+  width: 28px; height: 28px;
+  background: #fff;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  color: #0070d2;
+  font-size: 15px;
+  font-weight: 900;
+}
+.page { max-width: 1140px; margin: 1.5rem auto; padding: 0 1.5rem 4rem; }
+
+/* ── Card ── */
+.card {
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,.12);
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+.card-header {
+  border-bottom: 1px solid #dddbda;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.card-header-left { display: flex; align-items: center; gap: 10px; }
+.card-icon {
+  width: 32px; height: 32px; border-radius: 6px;
+  background: #f4bc25;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.card-title { font-size: 1rem; font-weight: 700; color: #16325c; }
+.card-body { padding: 1.25rem; }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 4px; border: 1px solid transparent;
+  font-size: 0.8125rem; font-weight: 700;
+  padding: 0 1rem; height: 32px;
+  cursor: pointer; transition: background 0.15s;
+  white-space: nowrap; font-family: inherit;
+  gap: 6px;
+}
+.btn-brand  { background: #0070d2; border-color: #0070d2; color: #fff; }
+.btn-brand:hover  { background: #005fb2; }
+.btn-brand:disabled { background: #c9c7c5; border-color: #c9c7c5; cursor: not-allowed; }
+.btn-neutral{ background: #fff; border-color: #dddbda; color: #0070d2; }
+.btn-neutral:hover { background: #f4f6f9; }
+.btn-success{ background: #2e844a; border-color: #2e844a; color: #fff; }
+.btn-success:hover { background: #256b3a; }
+.btn-success:disabled { background: #c9c7c5; border-color: #c9c7c5; cursor: not-allowed; }
+.btn-full   { width: 100%; }
+.btn-lg     { height: 40px; font-size: 0.875rem; padding: 0 1.5rem; }
+
+/* ── Form inputs ── */
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 0.875rem; }
+.field label { font-size: 0.75rem; font-weight: 700; color: #3e3e3c; }
+.field input[type=number],
+.field input[type=text] {
+  height: 32px; border: 1px solid #dddbda; border-radius: 4px;
+  padding: 0 8px; font-size: 0.8125rem; color: #181818;
+  background: #fff; font-family: inherit; width: 100%;
+  transition: border-color 0.15s;
+}
+.field input:focus { outline: none; border-color: #0070d2; box-shadow: 0 0 0 1px #0070d2; }
+.field .tip { font-size: 0.7rem; color: #706e6b; }
+
+/* Search with dropdown */
+.search-wrap { position: relative; }
+.search-wrap input { padding-left: 30px; }
+.search-icon {
+  position: absolute; left: 8px; top: 50%;
+  transform: translateY(-50%); color: #706e6b;
+  font-size: 13px; pointer-events: none;
+}
+.search-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0;
+  background: #fff; border: 1px solid #dddbda;
+  border-top: none; border-radius: 0 0 6px 6px;
+  z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  display: none; max-height: 520px; overflow-y: auto;
+  min-width: 420px;
+}
+.search-dropdown.open { display: block; }
+.dd-footer {
+  padding: 10px 14px; border-top: 1px solid #e8e8e8;
+  background: #f8f9fb; display: flex; justify-content: flex-end; gap: 8px;
+  position: sticky; bottom: 0;
+}
+.dd-item {
+  padding: 12px 14px; cursor: pointer;
+  border-bottom: 1px solid #f3f2f2;
+  display: flex; align-items: center; gap: 12px;
+  transition: background 0.1s;
+}
+.dd-item:last-child { border-bottom: none; }
+.dd-item:hover { background: #f0f7ff; }
+.dd-item.checked-row { background: #eaf3ff; }
+.dd-item input[type=checkbox] {
+  width: 17px; height: 17px; accent-color: #0070d2;
+  cursor: pointer; flex-shrink: 0;
+}
+.dd-item-info { flex: 1; }
+.dd-name { font-weight: 600; font-size: 0.875rem; }
+.dd-aum  { font-size: 0.8rem; color: #54698d; margin-top: 2px; }
+
+/* Search row with inline button */
+.search-row { display: flex; align-items: flex-start; gap: 10px; }
+.search-row .search-wrap { flex: 1; }
+
+/* Compact dropdown row (generational member search) */
+.dd-item-compact {
+  padding: 4px 10px; cursor: pointer;
+  border-bottom: 1px solid #f3f2f2;
+  display: flex; align-items: center; gap: 8px;
+  transition: background 0.1s;
+}
+.dd-item-compact:last-child { border-bottom: none; }
+.dd-item-compact:hover { background: #f0f7ff; }
+.dd-item-compact.checked-row { background: #eaf3ff; }
+.dd-item-compact input[type=checkbox] {
+  width: 15px; height: 15px; accent-color: #0070d2;
+  cursor: pointer; flex-shrink: 0;
+}
+.dd-item-compact .dd-item-info {
+  flex: 1; display: flex; align-items: center;
+  justify-content: space-between; gap: 12px;
+}
+.dd-aum-inline { font-size: 0.75rem; color: #54698d; white-space: nowrap; }
+
+/* Selected households list */
+.selected-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1rem; }
+.selected-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #f0f7ff; border: 1px solid #c9dbf0;
+  border-radius: 4px; padding: 8px 12px;
+  gap: 12px;
+}
+.selected-row-info { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.selected-row-name { font-weight: 600; font-size: 0.8125rem; color: #16325c; }
+.selected-row-aum  { font-size: 0.75rem; color: #54698d; }
+.remove-btn {
+  background: none; border: none; cursor: pointer;
+  color: #706e6b; font-size: 16px; line-height: 1;
+  padding: 2px 4px; border-radius: 2px;
+  transition: color 0.1s;
+}
+.remove-btn:hover { color: #ba0517; }
+
+/* AUM summary bar */
+.aum-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #f3f2f2; border-radius: 4px;
+  padding: 10px 14px; margin-bottom: 1rem;
+  gap: 12px; flex-wrap: wrap;
+}
+.aum-bar-item { display: flex; flex-direction: column; gap: 2px; }
+.aum-bar-label { font-size: 0.7rem; font-weight: 700; color: #706e6b; text-transform: uppercase; letter-spacing: .03em; }
+.aum-bar-value { font-size: 1rem; font-weight: 700; color: #16325c; }
+
+/* Threshold error / ok */
+.threshold-msg {
+  display: flex; align-items: center; gap: 8px;
+  border-radius: 4px; padding: 10px 14px;
+  font-size: 0.8125rem; font-weight: 600;
+  margin-bottom: 1rem;
+}
+.threshold-error { background: #fde8e8; border: 1px solid #f5a0a0; color: #ba0517; }
+.threshold-ok    { background: #e3f0e5; border: 1px solid #8ec89a; color: #2e6b3e; }
+.threshold-icon  { font-size: 16px; flex-shrink: 0; }
+
+/* Attestation */
+.attestation-box {
+  background: #fff8e1; border: 1px solid #f0c060;
+  border-radius: 4px; padding: 14px 16px;
+  margin-bottom: 1rem;
+}
+.attestation-text {
+  font-size: 0.8125rem; color: #3e3e3c; line-height: 1.5;
+  margin-bottom: 12px;
+}
+.attestation-check {
+  display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+}
+.attestation-check input[type=checkbox] {
+  width: 16px; height: 16px; margin-top: 1px;
+  accent-color: #0070d2; cursor: pointer; flex-shrink: 0;
+}
+.attestation-check span { font-size: 0.8125rem; font-weight: 700; color: #3e3e3c; line-height: 1.4; }
+
+/* Grid */
+.grid { display: flex; flex-wrap: wrap; gap: 12px; }
+.col-3 { flex: 0 0 calc(33.33% - 8px); min-width: 180px; }
+.col-2 { flex: 0 0 calc(50% - 6px);    min-width: 180px; }
+.col-1 { flex: 0 0 100%; }
+
+/* Checkbox row for SMA */
+.check-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 0.875rem; padding-top: 1.1rem;
+}
+.check-row input[type=checkbox] { width: 16px; height: 16px; accent-color: #0070d2; cursor: pointer; }
+.check-row label { font-size: 0.8125rem; font-weight: 700; color: #3e3e3c; cursor: pointer; }
+
+/* Result tiles */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+.result-tile {
+  background: white; border-radius: 4px;
+  padding: 12px 16px; border-left: 4px solid #0070d2;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.result-label {
+  font-size: 0.75rem; color: #54698d;
+  margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.result-value { font-size: 1.1rem; font-weight: 600; margin: 0; color: #16325c; }
+.result-ok   { color: #2e844a; }
+.result-warn { color: #dd7a01; }
+.result-bad  { color: #ba0517; }
+
+/* Toggle bar (lives in card header) */
+.toggle-bar {
+  display: flex; background: #f3f2f2; border-radius: 6px;
+  padding: 3px; gap: 3px;
+}
+.toggle-btn {
+  padding: 6px 22px; border: none; border-radius: 4px;
+  cursor: pointer; font-size: 0.8125rem; font-weight: 600;
+  background: transparent; color: #444; font-family: inherit;
+  transition: all .15s; white-space: nowrap;
+}
+.toggle-btn:hover { background: #e8e8e8; }
+.toggle-btn.active { background: #0070d2; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+
+/* Selected household chip */
+.hh-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: #eaf3ff; border: 1px solid #c0d9f5;
+  border-radius: 20px; padding: 4px 10px 4px 10px;
+  font-size: 0.8125rem; font-weight: 600; color: #0052a3;
+  margin-top: 4px;
+}
+.hh-chip-remove {
+  background: none; border: none; cursor: pointer;
+  color: #0052a3; font-size: 15px; line-height: 1; padding: 0 2px;
+}
+.hh-chip-remove:hover { color: #ba0517; }
+
+/* Results header area */
+.results-header {
+  background: #f3f2f2; border-radius: 4px;
+  padding: 10px 14px; margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px;
+}
+.results-header-title { font-weight: 700; color: #16325c; font-size: 0.875rem; }
+
+/* Back link */
+.back-btn { display: flex; align-items: center; gap: 4px; }
+
+/* Empty state */
+.empty-hint { color: #706e6b; font-size: 0.8125rem; font-style: italic; padding: 8px 0; }
+
+/* Divider */
+.divider { border: none; border-top: 1px solid #e8e8e8; margin: 1rem 0; }
+
+/* Success banner */
+.success-banner {
+  background: #e3f0e5; border: 1px solid #8ec89a; border-radius: 4px;
+  padding: 14px 16px; display: flex; align-items: center; gap: 10px;
+  font-size: 0.875rem; font-weight: 600; color: #1a4d2e;
+}
+
+@media (max-width: 600px) {
+  .col-3, .col-2 { flex: 0 0 100%; }
+  .landing-btns { flex-direction: column; align-items: center; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-bar">
+  <div class="app-bar-icon">&#9673;</div>
+  BFE Advisory Pricing Calculator
+</div>
+
+<div class="page">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="card-icon">&#128200;</div>
+        <span class="card-title">Advisory Pricing Calculator</span>
+      </div>
+      <div class="toggle-bar">
+        <button class="toggle-btn" id="tabStd" onclick="switchTab('standard')">Standard Household</button>
+        <button class="toggle-btn" id="tabGen" onclick="switchTab('generational')">Generational Household</button>
+      </div>
+    </div>
+    <div class="card-body" id="root"></div>
+  </div>
+</div>
+
+<!-- ── Create Standard Household Modal ── -->
+<div id="createStdModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:6px;width:460px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.25);overflow:hidden">
+    <div style="background:#0070d2;color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-weight:700;font-size:.9375rem">Create Standard Household</span>
+      <button onclick="stdCloseCreateHH()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1">&#215;</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:12px">
+      <div class="field" style="margin:0">
+        <label>Household Name</label>
+        <input type="text" id="createStdName" placeholder="e.g. Johnson, David & Karen" />
+      </div>
+      <div class="field" style="margin:0">
+        <label>Advisory AUM ($)</label>
+        <input type="number" id="createStdAUM" placeholder="e.g. 950000" step="1000" min="0" />
+      </div>
+      <div class="field" style="margin:0">
+        <label>Number of Accounts</label>
+        <input type="number" id="createStdAccts" placeholder="e.g. 2" min="1" step="1" />
+      </div>
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid #e8e8e8;display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-neutral" onclick="stdCloseCreateHH()">Cancel</button>
+      <button class="btn btn-success" onclick="stdSaveCreateHH()">Create Household</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  MOCK DATA
+// ═══════════════════════════════════════════════════════
+
+const HOUSEHOLDS = [
+  { id:1,  name:'Anderson, James & Linda',  aum:1850000, accounts:3 },
+  { id:2,  name:'Martinez, Carlos',          aum: 620000, accounts:1 },
+  { id:3,  name:'Chen, Wei & Mei',            aum:3200000, accounts:5 },
+  { id:4,  name:'Williams, Robert',           aum: 490000, accounts:2 },
+  { id:5,  name:'Thompson, Sarah',            aum:2100000, accounts:4 },
+  { id:6,  name:'Johnson, David & Karen',     aum: 975000, accounts:2 },
+  { id:7,  name:'Davis, Patricia',            aum:5400000, accounts:6 },
+  { id:8,  name:'Wilson, Michael & Sue',      aum:1100000, accounts:3 },
+  { id:9,  name:'Garcia, Elena',              aum: 340000, accounts:1 },
+  { id:10, name:'Brown, Thomas & Patricia',   aum: 780000, accounts:2 },
+  { id:11, name:'Smith, John & Mary',         aum:2450000, accounts:4 },
+  { id:12, name:'Smith, Robert',              aum: 875000, accounts:2 },
+  { id:13, name:'Smith, Patricia & David',    aum:1320000, accounts:3 },
+  { id:14, name:'Smith, Eleanor',             aum: 410000, accounts:1 },
+];
+
+const GEN_THRESHOLD = 1500000;   // $1.5M combined AUM required
+
+// ═══════════════════════════════════════════════════════
+//  APP STATE
+// ═══════════════════════════════════════════════════════
+
+const app = {
+  screen: 'landing',   // 'landing' | 'standard' | 'generational'
+
+  // Standard calc
+  std: {
+    searchVal: '',
+    selectedHH: null,       // household selected from search
+    acctAUM:0, hhAUMTotal:0, acFees:0, newmin:0,
+    grossRevenue:0, netRevenue:0, isSMAFixed:false,
+    resultsReady:false, results:{},
+  },
+
+  // Generational
+  gen: {
+    hhName: '',
+    searchVal: '',
+    pendingIds: new Set(), // checked but not yet added from dropdown
+    selected: [],
+    attested: false,
+    created: false,
+    lookupVal: '',
+    viewingId: null,
+  },
+};
+
+// ═══════════════════════════════════════════════════════
+//  LOCALSTORAGE  — saved generational households
+// ═══════════════════════════════════════════════════════
+
+const STORAGE_KEY = 'bfe_gen_households';
+
+function loadSaved() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+function saveHousehold(record) {
+  const all = loadSaved();
+  all.unshift(record);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+}
+function deleteSaved(id) {
+  const all = loadSaved().filter(h => h.id !== id);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+}
+
+// ═══════════════════════════════════════════════════════
+//  FEE HELPERS (SQL §1)
+// ═══════════════════════════════════════════════════════
+
+const smaFixedFee = a => {
+  a=a||0;
+  if(a<250000)  return a*75/10000;
+  if(a<1000000) return 1875+(a-250000)*60/10000;
+  if(a<2000000) return 6375+(a-1000000)*50/10000;
+  if(a<4000000) return 11375+(a-2000000)*40/10000;
+  if(a<7000000) return 19375+(a-4000000)*30/10000;
+  return 28375+(a-7000000)*25/10000;
+};
+const advFee = a => {
+  a=a||0;
+  if(a<250000)  return a*100/10000;
+  if(a<1000000) return 2500+(a-250000)*80/10000;
+  if(a<2000000) return 8500+(a-1000000)*60/10000;
+  if(a<4000000) return 14500+(a-2000000)*40/10000;
+  if(a<7000000) return 22500+(a-4000000)*30/10000;
+  return 31500+(a-7000000)*25/10000;
+};
+const overheadFee = a => {
+  a=a||0;
+  if(a<250000)  return a*38/10000;
+  if(a<1000000) return 950+(a-250000)*31/10000;
+  if(a<2000000) return 3275+(a-1000000)*23/10000;
+  if(a<4000000) return 5575+(a-2000000)*15/10000;
+  if(a<7000000) return 8575+(a-4000000)*11/10000;
+  return 11875+(a-7000000)*9/10000;
+};
+
+// ═══════════════════════════════════════════════════════
+//  CALC ENGINE (SQL §1-3)
+// ═══════════════════════════════════════════════════════
+
+function runCalc(acctAUM, hhAUM, acFees, newmin, isSMA, grossRev, netRev) {
+  const acctMinDollar = isSMA ? smaFixedFee(acctAUM) : advFee(acctAUM);
+  const acctMinBP     = (acctMinDollar / (acctAUM||1)) * 10000;
+
+  const hhBaseFee     = isSMA ? smaFixedFee(hhAUM) : advFee(hhAUM);
+  const hhBaseBP      = (hhBaseFee / (hhAUM||1)) * 10000;
+  const acctOvhBP     = (overheadFee(acctAUM) / (hhAUM||1)) * 10000;
+  const hhOvhBP       = (overheadFee(hhAUM)   / (hhAUM||1)) * 10000;
+  const minWithHH     = hhBaseBP - (acctOvhBP - hhOvhBP);
+
+  const qualifies     = hhAUM >= 1000000;
+  const estPartAcct   = Math.max(0, acctMinBP + newmin - acFees);
+  const estPartHH     = Math.max(0, minWithHH  + newmin - acFees);
+  const partMinFee    = qualifies ? minWithHH  : acctMinBP;
+  const estPart       = qualifies ? estPartHH  : estPartAcct;
+
+  let payRate;
+  if      (qualifies  && estPartHH   > 50) payRate = 0;
+  else if (!qualifies && estPartAcct > 50) payRate = 0;
+  else if (qualifies)                      payRate = 0.5 - estPartHH/100;
+  else                                     payRate = 0.5 - estPartAcct/100;
+
+  const changeInNet = Math.round((payRate*grossRev - netRev)*100)/100;
+
+  return {
+    qualifies,
+    acctMinBP, minWithHH, partMinFee, estPart, payRate, changeInNet,
+    grossRev,
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER ROUTER
+// ═══════════════════════════════════════════════════════
+
+function render() {
+  document.getElementById('root').innerHTML =
+    app.screen === 'standard' ? renderStandard() : renderGenerational();
+  document.getElementById('tabStd').classList.toggle('active', app.screen === 'standard');
+  document.getElementById('tabGen').classList.toggle('active', app.screen === 'generational');
+}
+
+function switchTab(screen) {
+  app.screen = screen;
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+//  STANDARD CALCULATOR
+// ═══════════════════════════════════════════════════════
+
+function renderStandard() {
+  const s   = app.std;
+  const r   = s.results;
+  const q   = (s.searchVal||'').toLowerCase().trim();
+  const hits = q ? HOUSEHOLDS.filter(h => h.name.toLowerCase().includes(q)) : [];
+
+  return `
+  <div>
+    <!-- Household search -->
+    <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.5rem">Search Household</p>
+    <div class="search-row" style="margin-bottom:.5rem;align-items:center">
+      <div class="field" style="flex:1;max-width:520px;margin-bottom:0">
+        <div class="search-wrap">
+          <span class="search-icon">&#128269;</span>
+          <input type="text"
+                 id="stdSearch"
+                 value="${escHtml(s.searchVal)}"
+                 placeholder="Search by last name, e.g. Anderson…"
+                 autocomplete="off"
+                 oninput="stdSearchInput(this.value)" />
+          <div class="search-dropdown ${q ? 'open' : ''}" id="stdDropdown">
+            ${q
+              ? hits.length
+                ? hits.map(h => `
+                  <div class="dd-item" onclick="stdSelectHH(${h.id})">
+                    <div class="dd-item-info">
+                      <div class="dd-name">${escHtml(h.name)}</div>
+                      <div class="dd-aum">${fmtUSD(h.aum)} advisory AUM &nbsp;·&nbsp; ${h.accounts} account(s)</div>
+                    </div>
+                    <span style="font-size:.8rem;color:#0070d2;font-weight:700;white-space:nowrap">Select ›</span>
+                  </div>`).join('')
+                : `<div class="dd-item" style="color:#706e6b;cursor:default;font-size:.875rem">No households found</div>`
+              : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    ${s.selectedHH ? `
+    <div style="margin-bottom:1rem">
+      <span class="hh-chip">
+        &#127968; ${escHtml(s.selectedHH.name)}
+        &nbsp;·&nbsp; ${fmtUSD(s.selectedHH.aum)} AUM
+        &nbsp;·&nbsp; ${s.selectedHH.accounts} account(s)
+        <button class="hh-chip-remove" onclick="stdClearHH()" title="Remove">&#215;</button>
+      </span>
+    </div>` : ''}
+
+    <hr class="divider" />
+
+    <!-- Inputs -->
+    <div class="grid">
+      <div class="col-3">
+        <div class="field">
+          <label>Account AUM ($)</label>
+          <input type="number" value="${s.acctAUM||''}" placeholder="e.g. 500000"
+                 step="1000" min="0" oninput="app.std.acctAUM=parseFloat(this.value)||0" />
+        </div>
+      </div>
+      <div class="col-3">
+        <div class="field">
+          <label>Total HH AUM ($)</label>
+          <input type="number" id="stdHHAUM" value="${s.hhAUMTotal||''}" placeholder="e.g. 1200000"
+                 step="1000" min="0" oninput="app.std.hhAUMTotal=parseFloat(this.value)||0" />
+          <span class="tip">${s.selectedHH ? 'Auto-filled from household' : ''}</span>
+        </div>
+      </div>
+      <div class="col-3">
+        <div class="field">
+          <label>Actual Client Fee (bps)</label>
+          <input type="number" value="${s.acFees||''}" placeholder="e.g. 75"
+                 step="0.01" min="0" oninput="app.std.acFees=parseFloat(this.value)||0" />
+        </div>
+      </div>
+      <div class="col-3">
+        <div class="field">
+          <label>Manager Fee Add-on (bps)</label>
+          <input type="number" value="${s.newmin||''}" placeholder="e.g. 10"
+                 step="0.01" min="0" oninput="app.std.newmin=parseFloat(this.value)||0" />
+        </div>
+      </div>
+      <div class="col-3">
+        <div class="field">
+          <label>Gross Revenue ($)</label>
+          <input type="number" value="${s.grossRevenue||''}" placeholder="e.g. 3750"
+                 step="100" min="0" oninput="app.std.grossRevenue=parseFloat(this.value)||0" />
+        </div>
+      </div>
+      <div class="col-3">
+        <div class="field">
+          <label>Net Revenue ($)</label>
+          <input type="number" value="${s.netRevenue||''}" placeholder="e.g. 1875"
+                 step="100" min="0" oninput="app.std.netRevenue=parseFloat(this.value)||0" />
+        </div>
+      </div>
+      <div class="col-3">
+        <div class="check-row">
+          <input type="checkbox" id="smaChk" ${s.isSMAFixed?'checked':''}
+                 onchange="app.std.isSMAFixed=this.checked" />
+          <label for="smaChk">SMA Fixed-Fee Account?</label>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-brand btn-lg" onclick="stdCalculate()">Calculate</button>
+
+    ${s.resultsReady ? `
+    <hr class="divider" />
+    <div class="results-header">
+      <span class="results-header-title">Results</span>
+      <span style="font-size:.75rem;color:#54698d">
+        HH AUM ${fmtUSD(s.hhAUMTotal)} &nbsp;|&nbsp;
+        ${r.qualifies ? '&#9989; Qualifies for HH Discount' : '&#9888;&#65039; No HH Discount'}
+      </span>
+    </div>
+    <div class="results-grid">
+      <div class="result-tile">
+        <p class="result-label">Acct Min (No HH Disc.)</p>
+        <p class="result-value">${r.acctMinBP.toFixed(2)} bps</p>
+      </div>
+      <div class="result-tile">
+        <p class="result-label">Min With HH Discount</p>
+        <p class="result-value">${r.minWithHH.toFixed(2)} bps</p>
+      </div>
+      <div class="result-tile">
+        <p class="result-label">Participation Minimum Fee</p>
+        <p class="result-value">${r.partMinFee.toFixed(2)} bps</p>
+      </div>
+      <div class="result-tile">
+        <p class="result-label">Estimated Participation Gap</p>
+        <p class="result-value ${r.estPart>0?'result-warn':'result-ok'}">${r.estPart.toFixed(2)} bps</p>
+      </div>
+      <div class="result-tile">
+        <p class="result-label">Participation Pay Rate</p>
+        <p class="result-value ${r.payRate===0?'result-bad':'result-ok'}">${(r.payRate*100).toFixed(1)}%</p>
+      </div>
+      <div class="result-tile">
+        <p class="result-label">Change in Net Revenue</p>
+        <p class="result-value ${r.changeInNet<0?'result-bad':'result-ok'}">$${r.changeInNet.toLocaleString('en-US',{minimumFractionDigits:2})}</p>
+      </div>
+    </div>` : ''}
+  </div>`;
+}
+
+function stdSearchInput(val) {
+  app.std.searchVal = val;
+  render();
+  const el = document.getElementById('stdSearch');
+  if (el) { el.focus(); el.setSelectionRange(val.length, val.length); }
+}
+
+function stdSelectHH(id) {
+  const hh = HOUSEHOLDS.find(h => h.id === id);
+  if (!hh) return;
+  app.std.selectedHH  = hh;
+  app.std.hhAUMTotal  = hh.aum;
+  app.std.searchVal   = '';
+  render();
+}
+
+function stdClearHH() {
+  app.std.selectedHH = null;
+  app.std.hhAUMTotal = 0;
+  app.std.searchVal  = '';
+  render();
+}
+
+function stdCalculate() {
+  const s = app.std;
+  if (!s.acctAUM)    { alert('Please enter Account AUM.'); return; }
+  if (!s.hhAUMTotal) { alert('Please enter Total HH AUM.'); return; }
+  app.std.results = runCalc(s.acctAUM, s.hhAUMTotal, s.acFees, s.newmin,
+                             s.isSMAFixed, s.grossRevenue, s.netRevenue);
+  app.std.resultsReady = true;
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+//  GENERATIONAL HOUSEHOLD
+// ═══════════════════════════════════════════════════════
+
+function renderGenerational() {
+  const g = app.gen;
+
+  // ── Viewing a saved household ──────────────────────────
+  if (g.viewingId !== null) {
+    const saved = loadSaved().find(h => h.id === g.viewingId);
+    if (!saved) { g.viewingId = null; render(); return ''; }
+    return `
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+        <div>
+          <p style="font-size:1rem;font-weight:700;color:#16325c">${escHtml(saved.name)}</p>
+          <p style="font-size:.75rem;color:#706e6b">Created ${saved.createdAt}</p>
+        </div>
+        <button class="btn btn-neutral" style="color:#ba0517;border-color:#ba0517"
+                onclick="genDeleteSaved('${saved.id}')">&#128465; Delete</button>
+      </div>
+      <div class="aum-bar" style="margin-bottom:1rem">
+        <div class="aum-bar-item">
+          <span class="aum-bar-label">Member Households</span>
+          <span class="aum-bar-value">${saved.members.length}</span>
+        </div>
+        <div class="aum-bar-item">
+          <span class="aum-bar-label">Combined AUM</span>
+          <span class="aum-bar-value">${fmtUSD(saved.totalAUM)}</span>
+        </div>
+      </div>
+      <div class="selected-list">
+        ${saved.members.map(m=>`
+        <div class="selected-row">
+          <div class="selected-row-info">
+            <span class="selected-row-name">${escHtml(m.name)}</span>
+            <span class="selected-row-aum">${fmtUSD(m.aum)} advisory AUM</span>
+          </div>
+        </div>`).join('')}
+      </div>
+      <button class="btn btn-neutral" style="margin-top:.5rem"
+              onclick="app.gen.viewingId=null;render()">&#8592; Back to Search</button>
+    </div>`;
+  }
+
+  // ── Success screen ─────────────────────────────────────
+  if (g.created) {
+    const totalAUM = g.selected.reduce((s,h)=>s+h.aum,0);
+    return `
+    <div class="success-banner">
+      &#9989;&nbsp; <strong>${escHtml(g.hhName)}</strong> created with ${g.selected.length} member households
+      and a combined AUM of ${fmtUSD(totalAUM)}.
+    </div>
+    <div style="margin-top:1rem;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-neutral" onclick="genReset()">+ Create Another</button>
+      <button class="btn btn-brand"   onclick="app.gen.viewingId=app.gen.lastCreatedId;render()">View Household</button>
+    </div>`;
+  }
+
+  // ── Main form ──────────────────────────────────────────
+  const totalAUM    = g.selected.reduce((s,h)=>s+h.aum, 0);
+  const meetsMin    = totalAUM >= GEN_THRESHOLD;
+  const canCreate   = g.attested && g.selected.length >= 2 && g.hhName.trim();
+  const selectedIds = new Set(g.selected.map(h=>h.id));
+
+  // Member-search dropdown
+  const mQuery   = (g.searchVal||'').toLowerCase().trim();
+  const mMatches = mQuery
+    ? HOUSEHOLDS.filter(h => h.name.toLowerCase().includes(mQuery) && !selectedIds.has(h.id))
+    : [];
+
+  // Saved-household lookup
+  const lQuery   = (g.lookupVal||'').toLowerCase().trim();
+  const saved    = loadSaved();
+  const lMatches = lQuery
+    ? saved.filter(h => h.name.toLowerCase().includes(lQuery))
+    : [];
+
+  return `
+  <div>
+
+    <!-- ── Lookup existing generational households ── -->
+    <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.5rem">
+      Search Existing Generational Households
+    </p>
+    <div class="field" style="margin-bottom:1.25rem">
+      <div class="search-wrap">
+        <span class="search-icon">&#128269;</span>
+        <input type="text"
+               id="genLookup"
+               value="${escHtml(g.lookupVal)}"
+               placeholder="Search saved generational households…"
+               autocomplete="off"
+               oninput="genLookupInput(this.value)" />
+        <div class="search-dropdown ${lQuery ? 'open' : ''}" id="genLookupDropdown">
+          ${lQuery
+            ? lMatches.length
+              ? lMatches.map(h=>`
+                <div class="dd-item" onclick="app.gen.viewingId='${h.id}';app.gen.lookupVal='';render()">
+                  <div>
+                    <div class="dd-name">${escHtml(h.name)}</div>
+                    <div class="dd-aum">${h.members.length} members &nbsp;·&nbsp; ${fmtUSD(h.totalAUM)} combined AUM &nbsp;·&nbsp; ${h.createdAt}</div>
+                  </div>
+                  <span style="font-size:.75rem;color:#0070d2;font-weight:700">View ›</span>
+                </div>`).join('')
+              : `<div class="dd-item" style="color:#706e6b;cursor:default">No saved households found</div>`
+            : ''}
+        </div>
+      </div>
+      ${saved.length
+        ? `<span class="tip">${saved.length} saved generational household${saved.length!==1?'s':''} on this device</span>`
+        : `<span class="tip">No saved households yet</span>`}
+    </div>
+
+    <hr class="divider" />
+
+    <!-- ── Create new ── -->
+    <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.5rem">
+      1. Name the Generational Household
+    </p>
+    <div class="field" style="max-width:380px">
+      <label>Household Name</label>
+      <input type="text"
+             id="genHHName"
+             value="${escHtml(g.hhName)}"
+             placeholder="e.g. Smith Family Generational"
+             oninput="app.gen.hhName=this.value" />
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;gap:12px">
+      <div>
+        <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.2rem">
+          2. Search and select member households
+        </p>
+        <p style="font-size:.75rem;color:#706e6b">
+          Select at least 2 households. Combined AUM must reach ${fmtUSD(GEN_THRESHOLD)}.
+        </p>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+        <button class="btn btn-success" style="white-space:nowrap"
+                onclick="genCreate()" ${canCreate ? '' : 'disabled style="opacity:.45;cursor:not-allowed"'}>
+          + Create Household
+        </button>
+        ${g.createError ? `<span style="color:#c23934;font-size:.75rem;font-weight:600;max-width:220px;text-align:right">${escHtml(g.createError)}</span>` : ''}
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="search-wrap">
+        <span class="search-icon">&#128269;</span>
+        <input type="text"
+               id="genSearch"
+               value="${escHtml(g.searchVal)}"
+               placeholder="Search by last name, e.g. Smith…"
+               autocomplete="off"
+               oninput="genSearchInput(this.value)" />
+        <div class="search-dropdown ${mQuery ? 'open' : ''}" id="genDropdown">
+          ${mQuery
+            ? mMatches.length
+              ? `${mMatches.map(h => {
+                  const checked = g.pendingIds.has(h.id);
+                  return `<div class="dd-item-compact ${checked?'checked-row':''}"
+                               onclick="genTogglePending(${h.id},event)">
+                    <input type="checkbox" ${checked?'checked':''}
+                           onclick="event.stopPropagation()"
+                           onchange="genTogglePending(${h.id},event)" />
+                    <div class="dd-item-info">
+                      <span class="dd-name">${escHtml(h.name)}</span>
+                      <span class="dd-aum-inline">${fmtUSD(h.aum)}</span>
+                    </div>
+                  </div>`;
+                }).join('')}
+                <div class="dd-footer">
+                  <span style="font-size:.75rem;color:#54698d;align-self:center">
+                    ${g.pendingIds.size} selected
+                  </span>
+                  <button class="btn btn-neutral" style="height:28px;font-size:.75rem"
+                          onclick="genClearPending()">Clear</button>
+                  <button class="btn btn-brand" style="height:28px;font-size:.75rem"
+                          onclick="genAddPending()" ${g.pendingIds.size===0?'disabled':''}>
+                    Add Selected
+                  </button>
+                </div>`
+              : `<div class="dd-item" style="color:#706e6b;cursor:default">No households found</div>`
+            : ''}
+        </div>
+      </div>
+    </div>
+
+    <!-- Selected members -->
+    ${g.selected.length
+      ? `<div class="selected-list">
+          ${g.selected.map(h=>`
+          <div class="selected-row">
+            <div class="selected-row-info">
+              <span class="selected-row-name">${escHtml(h.name)}</span>
+              <span class="selected-row-aum">${fmtUSD(h.aum)} advisory AUM</span>
+            </div>
+            <button class="remove-btn" title="Remove" onclick="genRemoveHH(${h.id})">&#215;</button>
+          </div>`).join('')}
+        </div>`
+      : `<p class="empty-hint">No households selected yet — search above to add members.</p>`}
+
+    <!-- AUM summary + threshold -->
+    ${g.selected.length ? `
+    <div class="aum-bar">
+      <div class="aum-bar-item">
+        <span class="aum-bar-label">Members</span>
+        <span class="aum-bar-value">${g.selected.length}</span>
+      </div>
+      <div class="aum-bar-item">
+        <span class="aum-bar-label">Combined Advisory AUM</span>
+        <span class="aum-bar-value">${fmtUSD(totalAUM)}</span>
+      </div>
+      <div class="aum-bar-item">
+        <span class="aum-bar-label">Minimum Required</span>
+        <span class="aum-bar-value">${fmtUSD(GEN_THRESHOLD)}</span>
+      </div>
+    </div>
+    ${meetsMin
+      ? `<div class="threshold-msg threshold-ok">
+           <span class="threshold-icon">&#9989;</span>
+           Combined AUM of ${fmtUSD(totalAUM)} meets the ${fmtUSD(GEN_THRESHOLD)} threshold.
+         </div>`
+      : `<div class="threshold-msg threshold-error">
+           <span class="threshold-icon">&#9888;&#65039;</span>
+           Combined AUM of ${fmtUSD(totalAUM)} is below the ${fmtUSD(GEN_THRESHOLD)} threshold —
+           need ${fmtUSD(GEN_THRESHOLD - totalAUM)} more to proceed.
+         </div>`}
+    ` : ''}
+
+    <!-- Attestation (appears once 2+ members selected) -->
+    ${g.selected.length >= 2 ? `
+    <hr class="divider" />
+    <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.75rem">3. Attestation</p>
+    <div class="attestation-box">
+      <p class="attestation-text">
+        By creating this Generational Household, I attest that the households listed above
+        qualify as a generational household unit under firm policy. I confirm that the
+        relationships between these households have been verified, that all required
+        documentation is on file, and that I am authorized to establish this grouping.
+        This designation affects fee calculations and household discount eligibility.
+        <br/><br/>
+        <em style="color:#706e6b;font-size:.75rem">Final attestation language will be provided by Legal.</em>
+      </p>
+      <label class="attestation-check">
+        <input type="checkbox" ${g.attested?'checked':''}
+               onchange="app.gen.attested=this.checked;render()" />
+        <span>I have read and agree to the above attestation statement.</span>
+      </label>
+    </div>
+
+    ` : ''}
+
+  </div>`;
+}
+
+function genSearchInput(val) {
+  app.gen.searchVal = val;
+  if (!val.trim()) app.gen.pendingIds = new Set();
+  render();
+  const el = document.getElementById('genSearch');
+  if (el) { el.focus(); el.setSelectionRange(val.length, val.length); }
+}
+
+function genLookupInput(val) {
+  app.gen.lookupVal = val;
+  render();
+  const el = document.getElementById('genLookup');
+  if (el) { el.focus(); el.setSelectionRange(val.length, val.length); }
+}
+
+function genTogglePending(id, e) {
+  if (e) e.stopPropagation();
+  const p = app.gen.pendingIds;
+  p.has(id) ? p.delete(id) : p.add(id);
+  render();
+  const el = document.getElementById('genSearch');
+  if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+}
+
+function genAddPending() {
+  const g = app.gen;
+  const selectedIds = new Set(g.selected.map(h=>h.id));
+  g.pendingIds.forEach(id => {
+    if (!selectedIds.has(id)) {
+      const hh = HOUSEHOLDS.find(h=>h.id===id);
+      if (hh) g.selected.push(hh);
+    }
+  });
+  g.pendingIds = new Set();
+  g.searchVal = '';
+  render();
+}
+
+function genClearPending() {
+  app.gen.pendingIds = new Set();
+  render();
+  const el = document.getElementById('genSearch');
+  if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+}
+
+function genRemoveHH(id) {
+  app.gen.selected = app.gen.selected.filter(h=>h.id!==id);
+  render();
+}
+
+function genCreate() {
+  const g = app.gen;
+  const totalAUM = g.selected.reduce((s,h)=>s+h.aum,0);
+  const meetsMin = totalAUM >= GEN_THRESHOLD;
+  if (!g.hhName.trim() || !g.attested || g.selected.length < 2) return;
+  if (!meetsMin) {
+    g.createError = `Combined AUM of ${fmtUSD(totalAUM)} is below the ${fmtUSD(GEN_THRESHOLD)} minimum threshold.`;
+    render();
+    return;
+  }
+  g.createError = '';
+  const id = 'gen_' + Date.now();
+  const now = new Date().toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
+  saveHousehold({
+    id,
+    name: g.hhName.trim(),
+    members: g.selected.map(h=>({id:h.id, name:h.name, aum:h.aum})),
+    totalAUM,
+    createdAt: now,
+  });
+  g.lastCreatedId = id;
+  g.created = true;
+  render();
+}
+
+function genDeleteSaved(id) {
+  if (!confirm('Delete this generational household? This cannot be undone.')) return;
+  deleteSaved(id);
+  app.gen.viewingId = null;
+  render();
+}
+
+function genReset() {
+  app.gen = { hhName:'', searchVal:'', pendingIds:new Set(), selected:[], attested:false, created:false, lookupVal:'', viewingId:null, createError:'' };
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════
+
+function fmtUSD(n) {
+  return '$' + Number(n||0).toLocaleString('en-US');
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Create Standard Household modal ──────────────────────────────────────
+
+function stdOpenCreateHH() {
+  document.getElementById('createStdName').value  = '';
+  document.getElementById('createStdAUM').value   = '';
+  document.getElementById('createStdAccts').value = '';
+  document.getElementById('createStdModal').style.display = 'flex';
+}
+
+function stdCloseCreateHH() {
+  document.getElementById('createStdModal').style.display = 'none';
+}
+
+function stdSaveCreateHH() {
+  const name   = document.getElementById('createStdName').value.trim();
+  const aum    = parseFloat(document.getElementById('createStdAUM').value) || 0;
+  const accts  = parseInt(document.getElementById('createStdAccts').value)  || 1;
+  if (!name)  { alert('Please enter a household name.'); return; }
+  if (!aum)   { alert('Please enter an AUM value.');     return; }
+  const newHH = { id: Date.now(), name, aum, accounts: accts };
+  HOUSEHOLDS.unshift(newHH);
+  stdSelectHH(newHH.id);
+  stdCloseCreateHH();
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap')) {
+    app.gen.searchVal  = '';
+    app.gen.lookupVal  = '';
+    app.std.searchVal  = '';
+    document.querySelectorAll('.search-dropdown').forEach(d => d.classList.remove('open'));
+  }
+});
+
+// Boot — start on Standard tab
+app.screen = 'standard';
+render();
+</script>
+</body>
+</html>
