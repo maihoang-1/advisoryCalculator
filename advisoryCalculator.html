@@ -1,0 +1,210 @@
+<template>
+    <lightning-card title="Advisory Pricing Calculator" icon-name="standard:opportunity">
+
+        <!-- ── LANDING SCREEN ── -->
+        <template if:false={householdType}>
+            <div class="slds-p-around_large slds-text-align_center">
+                <h2 class="slds-text-heading_medium slds-m-bottom_large">
+                    Select Household Type
+                </h2>
+                <div class="slds-grid slds-gutters slds-grid_align-center">
+                    <div class="slds-col slds-size_1-of-4">
+                        <lightning-button
+                            variant="brand"
+                            label="Standard Household"
+                            onclick={selectStandard}
+                            class="slds-m-around_small btn-full-width">
+                        </lightning-button>
+                    </div>
+                    <div class="slds-col slds-size_1-of-4">
+                        <lightning-button
+                            variant="neutral"
+                            label="Generational Household"
+                            onclick={selectGenerational}
+                            class="slds-m-around_small btn-full-width">
+                        </lightning-button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- ── GENERATIONAL: STILL IN DEVELOPMENT ── -->
+        <template if:true={isGenerational}>
+            <div class="slds-p-around_large slds-text-align_center">
+                <div class="slds-illustration slds-illustration_small slds-m-bottom_medium">
+                    <lightning-icon
+                        icon-name="utility:builder"
+                        size="large"
+                        alternative-text="In Development">
+                    </lightning-icon>
+                </div>
+                <h2 class="slds-text-heading_medium slds-m-bottom_small">Still in Development</h2>
+                <p class="slds-text-body_regular slds-text-color_weak slds-m-bottom_large">
+                    Generational Household pricing is coming soon.
+                </p>
+                <lightning-button label="← Back" onclick={goBack}></lightning-button>
+            </div>
+        </template>
+
+        <!-- ── STANDARD HOUSEHOLD CALCULATOR ── -->
+        <template if:true={isStandard}>
+            <div class="slds-p-around_medium">
+                <div class="slds-grid slds-gutters slds-m-bottom_medium slds-grid_align-spread">
+                    <div class="slds-col">
+                        <h2 class="slds-text-heading_small">Standard Household Calculator</h2>
+                    </div>
+                    <div class="slds-col slds-no-flex">
+                        <lightning-button label="← Back" onclick={goBack}></lightning-button>
+                    </div>
+                </div>
+
+                <!-- Inputs -->
+                <div class="slds-grid slds-gutters slds-wrap slds-m-bottom_medium">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <lightning-input
+                            type="number"
+                            label="Account AUM ($)"
+                            value={acctAUM}
+                            onchange={handleAcctAUM}
+                            formatter="decimal"
+                            step="1000"
+                            min="0">
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <lightning-input
+                            type="number"
+                            label="Total HH AUM ($)"
+                            value={hhAUMTotal}
+                            onchange={handleHHAUM}
+                            formatter="decimal"
+                            step="1000"
+                            min="0">
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <lightning-input
+                            type="number"
+                            label="Actual Client Fee (bps)"
+                            value={acFees}
+                            onchange={handleAcFees}
+                            formatter="decimal"
+                            step="0.01"
+                            min="0">
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <lightning-input
+                            type="number"
+                            label="Manager Fee Add-on (newmin, bps)"
+                            value={newmin}
+                            onchange={handleNewmin}
+                            formatter="decimal"
+                            step="0.01"
+                            min="0">
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <lightning-input
+                            type="number"
+                            label="Gross Revenue ($)"
+                            value={grossRevenue}
+                            onchange={handleGrossRevenue}
+                            formatter="decimal"
+                            step="100"
+                            min="0">
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <lightning-input
+                            type="number"
+                            label="Net Revenue (standard discount, $)"
+                            value={netRevenue}
+                            onchange={handleNetRevenue}
+                            formatter="decimal"
+                            step="100"
+                            min="0">
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-top_medium">
+                        <lightning-input
+                            type="checkbox"
+                            label="SMA Fixed-Fee Account?"
+                            checked={isSMAFixed}
+                            onchange={handleSMAFixed}>
+                        </lightning-input>
+                    </div>
+                </div>
+
+                <lightning-button
+                    variant="brand"
+                    label="Calculate"
+                    onclick={calculate}
+                    class="slds-m-bottom_medium">
+                </lightning-button>
+
+                <!-- Results -->
+                <template if:true={resultsReady}>
+                    <div class="slds-box slds-theme_shade slds-m-top_medium">
+                        <h3 class="slds-text-heading_small slds-m-bottom_medium">Results</h3>
+
+                        <div class="slds-grid slds-gutters slds-wrap">
+
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-3">
+                                <div class="result-tile">
+                                    <p class="result-label">Qualifies for HH Discount</p>
+                                    <p class="result-value">{results.qualifiesForHHDiscount}</p>
+                                </div>
+                            </div>
+
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-3">
+                                <div class="result-tile">
+                                    <p class="result-label">Acct Minimum (No HH Discount, bps)</p>
+                                    <p class="result-value">{results.acctMinBPNoHHDiscounts}</p>
+                                </div>
+                            </div>
+
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-3">
+                                <div class="result-tile">
+                                    <p class="result-label">Minimum with HH Discount (bps)</p>
+                                    <p class="result-value">{results.minWithHHDiscounts}</p>
+                                </div>
+                            </div>
+
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-3">
+                                <div class="result-tile">
+                                    <p class="result-label">Participation Minimum Fee (bps)</p>
+                                    <p class="result-value">{results.participationMinimumFee}</p>
+                                </div>
+                            </div>
+
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-3">
+                                <div class="result-tile">
+                                    <p class="result-label">Estimated Participation Gap (bps)</p>
+                                    <p class="result-value {results.participationClass}">{results.estimatedParticipation}</p>
+                                </div>
+                            </div>
+
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-3">
+                                <div class="result-tile">
+                                    <p class="result-label">Participation Pay Rate</p>
+                                    <p class="result-value {results.payRateClass}">{results.participationPayRate}</p>
+                                </div>
+                            </div>
+
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-3">
+                                <div class="result-tile">
+                                    <p class="result-label">Change in Net Revenue ($)</p>
+                                    <p class="result-value {results.changeClass}">{results.changeInNet}</p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </template>
+
+            </div>
+        </template>
+
+    </lightning-card>
+</template>
