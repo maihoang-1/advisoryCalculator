@@ -324,12 +324,36 @@ const app = {
 
   // Generational
   gen: {
+    hhName: '',            // name for the new generational household
     searchVal: '',
     selected: [],          // array of household objects
     attested: false,
     created: false,
+    // lookup mode
+    lookupVal: '',
+    viewingId: null,       // id of a saved household being viewed
   },
 };
+
+// ═══════════════════════════════════════════════════════
+//  LOCALSTORAGE  — saved generational households
+// ═══════════════════════════════════════════════════════
+
+const STORAGE_KEY = 'bfe_gen_households';
+
+function loadSaved() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+function saveHousehold(record) {
+  const all = loadSaved();
+  all.unshift(record);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+}
+function deleteSaved(id) {
+  const all = loadSaved().filter(h => h.id !== id);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+}
 
 // ═══════════════════════════════════════════════════════
 //  FEE HELPERS (SQL §1)
@@ -429,7 +453,7 @@ function renderLanding() {
     <h2>Select Household Type</h2>
     <div class="toggle-bar">
       <button class="toggle-btn" onclick="app.screen='standard';render()">Standard Household</button>
-      <button class="toggle-btn" onclick="app.screen='generational';app.gen={searchVal:'',selected:[],attested:false,created:false};render()">Generational Household</button>
+      <button class="toggle-btn" onclick="app.screen='generational';genReset();render()">Generational Household</button>
     </div>
   </div>`;
 }
@@ -550,43 +574,136 @@ function stdCalculate() {
 // ═══════════════════════════════════════════════════════
 
 function renderGenerational() {
-  const g          = app.gen;
-  const totalAUM   = g.selected.reduce((s,h)=>s+h.aum, 0);
-  const meetsMin   = totalAUM >= GEN_THRESHOLD;
-  const canCreate  = meetsMin && g.attested && g.selected.length >= 2;
-  const selectedIds= new Set(g.selected.map(h=>h.id));
+  const g = app.gen;
 
-  // Filter search results
-  const query   = (g.searchVal||'').toLowerCase().trim();
-  const matches = query
-    ? HOUSEHOLDS.filter(h => h.name.toLowerCase().includes(query) && !selectedIds.has(h.id))
-    : [];
-
-  if (g.created) {
+  // ── Viewing a saved household ──────────────────────────
+  if (g.viewingId !== null) {
+    const saved = loadSaved().find(h => h.id === g.viewingId);
+    if (!saved) { g.viewingId = null; render(); return ''; }
     return `
-    <div class="success-banner">
-      &#9989;&nbsp; Generational household created successfully with ${g.selected.length} member households
-      and a combined AUM of ${fmtUSD(totalAUM)}.
-    </div>
-    <div style="margin-top:1rem">
-      <button class="btn btn-neutral" onclick="app.gen.created=false;app.gen.selected=[];app.gen.attested=false;render()">
-        + Create Another
-      </button>
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+        <div>
+          <p style="font-size:1rem;font-weight:700;color:#16325c">${escHtml(saved.name)}</p>
+          <p style="font-size:.75rem;color:#706e6b">Created ${saved.createdAt}</p>
+        </div>
+        <button class="btn btn-neutral" style="color:#ba0517;border-color:#ba0517"
+                onclick="genDeleteSaved('${saved.id}')">&#128465; Delete</button>
+      </div>
+      <div class="aum-bar" style="margin-bottom:1rem">
+        <div class="aum-bar-item">
+          <span class="aum-bar-label">Member Households</span>
+          <span class="aum-bar-value">${saved.members.length}</span>
+        </div>
+        <div class="aum-bar-item">
+          <span class="aum-bar-label">Combined AUM</span>
+          <span class="aum-bar-value">${fmtUSD(saved.totalAUM)}</span>
+        </div>
+      </div>
+      <div class="selected-list">
+        ${saved.members.map(m=>`
+        <div class="selected-row">
+          <div class="selected-row-info">
+            <span class="selected-row-name">${escHtml(m.name)}</span>
+            <span class="selected-row-aum">${fmtUSD(m.aum)} advisory AUM</span>
+          </div>
+        </div>`).join('')}
+      </div>
+      <button class="btn btn-neutral" style="margin-top:.5rem"
+              onclick="app.gen.viewingId=null;render()">&#8592; Back to Search</button>
     </div>`;
   }
+
+  // ── Success screen ─────────────────────────────────────
+  if (g.created) {
+    const totalAUM = g.selected.reduce((s,h)=>s+h.aum,0);
+    return `
+    <div class="success-banner">
+      &#9989;&nbsp; <strong>${escHtml(g.hhName)}</strong> created with ${g.selected.length} member households
+      and a combined AUM of ${fmtUSD(totalAUM)}.
+    </div>
+    <div style="margin-top:1rem;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-neutral" onclick="genReset()">+ Create Another</button>
+      <button class="btn btn-brand"   onclick="app.gen.viewingId=app.gen.lastCreatedId;render()">View Household</button>
+    </div>`;
+  }
+
+  // ── Main form ──────────────────────────────────────────
+  const totalAUM    = g.selected.reduce((s,h)=>s+h.aum, 0);
+  const meetsMin    = totalAUM >= GEN_THRESHOLD;
+  const canCreate   = meetsMin && g.attested && g.selected.length >= 2 && g.hhName.trim();
+  const selectedIds = new Set(g.selected.map(h=>h.id));
+
+  // Member-search dropdown
+  const mQuery   = (g.searchVal||'').toLowerCase().trim();
+  const mMatches = mQuery
+    ? HOUSEHOLDS.filter(h => h.name.toLowerCase().includes(mQuery) && !selectedIds.has(h.id))
+    : [];
+
+  // Saved-household lookup
+  const lQuery   = (g.lookupVal||'').toLowerCase().trim();
+  const saved    = loadSaved();
+  const lMatches = lQuery
+    ? saved.filter(h => h.name.toLowerCase().includes(lQuery))
+    : [];
 
   return `
   <div>
 
-    <!-- Step 1: Search & select households -->
-    <div style="margin-bottom:0.25rem">
-      <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.5rem">
-        1. Search and select member households
-      </p>
-      <p style="font-size:.75rem;color:#706e6b;margin-bottom:.75rem">
-        Select at least 2 households. Combined AUM must reach ${fmtUSD(GEN_THRESHOLD)}.
-      </p>
+    <!-- ── Lookup existing generational households ── -->
+    <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.5rem">
+      Search Existing Generational Households
+    </p>
+    <div class="field" style="margin-bottom:1.25rem">
+      <div class="search-wrap">
+        <span class="search-icon">&#128269;</span>
+        <input type="text"
+               id="genLookup"
+               value="${escHtml(g.lookupVal)}"
+               placeholder="Search saved generational households…"
+               autocomplete="off"
+               oninput="genLookupInput(this.value)" />
+        <div class="search-dropdown ${lQuery ? 'open' : ''}" id="genLookupDropdown">
+          ${lQuery
+            ? lMatches.length
+              ? lMatches.map(h=>`
+                <div class="dd-item" onclick="app.gen.viewingId='${h.id}';app.gen.lookupVal='';render()">
+                  <div>
+                    <div class="dd-name">${escHtml(h.name)}</div>
+                    <div class="dd-aum">${h.members.length} members &nbsp;·&nbsp; ${fmtUSD(h.totalAUM)} combined AUM &nbsp;·&nbsp; ${h.createdAt}</div>
+                  </div>
+                  <span style="font-size:.75rem;color:#0070d2;font-weight:700">View ›</span>
+                </div>`).join('')
+              : `<div class="dd-item" style="color:#706e6b;cursor:default">No saved households found</div>`
+            : ''}
+        </div>
+      </div>
+      ${saved.length
+        ? `<span class="tip">${saved.length} saved generational household${saved.length!==1?'s':''} on this device</span>`
+        : `<span class="tip">No saved households yet</span>`}
     </div>
+
+    <hr class="divider" />
+
+    <!-- ── Create new ── -->
+    <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.5rem">
+      1. Name the Generational Household
+    </p>
+    <div class="field" style="max-width:380px">
+      <label>Household Name</label>
+      <input type="text"
+             id="genHHName"
+             value="${escHtml(g.hhName)}"
+             placeholder="e.g. Smith Family Generational"
+             oninput="app.gen.hhName=this.value" />
+    </div>
+
+    <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.5rem">
+      2. Search and select member households
+    </p>
+    <p style="font-size:.75rem;color:#706e6b;margin-bottom:.75rem">
+      Select at least 2 households. Combined AUM must reach ${fmtUSD(GEN_THRESHOLD)}.
+    </p>
 
     <div class="field">
       <div class="search-wrap">
@@ -597,24 +714,24 @@ function renderGenerational() {
                placeholder="Search household name…"
                autocomplete="off"
                oninput="genSearchInput(this.value)" />
-        <div class="search-dropdown ${query && matches.length ? 'open' : ''}" id="genDropdown">
-          ${matches.length
-            ? matches.map(h=>`
-              <div class="dd-item" onclick="genSelectHH(${h.id})">
-                <div>
-                  <div class="dd-name">${escHtml(h.name)}</div>
-                  <div class="dd-aum">${fmtUSD(h.aum)} advisory AUM</div>
-                </div>
-                <button class="btn btn-brand" style="height:26px;padding:0 10px;font-size:.75rem">Add</button>
-              </div>`).join('')
-            : query
-              ? `<div class="dd-item" style="color:#706e6b;cursor:default">No households found</div>`
-              : ''}
+        <div class="search-dropdown ${mQuery ? 'open' : ''}" id="genDropdown">
+          ${mQuery
+            ? mMatches.length
+              ? mMatches.map(h=>`
+                <div class="dd-item" onclick="genSelectHH(${h.id})">
+                  <div>
+                    <div class="dd-name">${escHtml(h.name)}</div>
+                    <div class="dd-aum">${fmtUSD(h.aum)} advisory AUM</div>
+                  </div>
+                  <button class="btn btn-brand" style="height:26px;padding:0 10px;font-size:.75rem">Add</button>
+                </div>`).join('')
+              : `<div class="dd-item" style="color:#706e6b;cursor:default">No households found</div>`
+            : ''}
         </div>
       </div>
     </div>
 
-    <!-- Selected list -->
+    <!-- Selected members -->
     ${g.selected.length
       ? `<div class="selected-list">
           ${g.selected.map(h=>`
@@ -628,11 +745,11 @@ function renderGenerational() {
         </div>`
       : `<p class="empty-hint">No households selected yet — search above to add members.</p>`}
 
-    <!-- AUM summary -->
+    <!-- AUM summary + threshold -->
     ${g.selected.length ? `
     <div class="aum-bar">
       <div class="aum-bar-item">
-        <span class="aum-bar-label">Members selected</span>
+        <span class="aum-bar-label">Members</span>
         <span class="aum-bar-value">${g.selected.length}</span>
       </div>
       <div class="aum-bar-item">
@@ -644,8 +761,6 @@ function renderGenerational() {
         <span class="aum-bar-value">${fmtUSD(GEN_THRESHOLD)}</span>
       </div>
     </div>
-
-    <!-- Threshold status -->
     ${meetsMin
       ? `<div class="threshold-msg threshold-ok">
            <span class="threshold-icon">&#9989;</span>
@@ -653,17 +768,15 @@ function renderGenerational() {
          </div>`
       : `<div class="threshold-msg threshold-error">
            <span class="threshold-icon">&#9888;&#65039;</span>
-           Combined AUM of ${fmtUSD(totalAUM)} is below the required ${fmtUSD(GEN_THRESHOLD)} threshold.
-           You need ${fmtUSD(GEN_THRESHOLD - totalAUM)} more to proceed.
+           Combined AUM of ${fmtUSD(totalAUM)} is below the ${fmtUSD(GEN_THRESHOLD)} threshold —
+           need ${fmtUSD(GEN_THRESHOLD - totalAUM)} more to proceed.
          </div>`}
     ` : ''}
 
-    <!-- Step 2: Attestation (only show once threshold is met) -->
+    <!-- Attestation (appears once threshold met + 2+ members) -->
     ${meetsMin && g.selected.length >= 2 ? `
     <hr class="divider" />
-    <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.75rem">
-      2. Attestation
-    </p>
+    <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.75rem">3. Attestation</p>
     <div class="attestation-box">
       <p class="attestation-text">
         By creating this Generational Household, I attest that the households listed above
@@ -671,10 +784,8 @@ function renderGenerational() {
         relationships between these households have been verified, that all required
         documentation is on file, and that I am authorized to establish this grouping.
         This designation affects fee calculations and household discount eligibility.
-        <br /><br />
-        <em style="color:#706e6b;font-size:.75rem">
-          Final attestation language will be provided by Legal.
-        </em>
+        <br/><br/>
+        <em style="color:#706e6b;font-size:.75rem">Final attestation language will be provided by Legal.</em>
       </p>
       <label class="attestation-check">
         <input type="checkbox" ${g.attested?'checked':''}
@@ -683,11 +794,12 @@ function renderGenerational() {
       </label>
     </div>
 
-    <!-- Step 3: Create button -->
-    <button class="btn btn-success btn-lg ${canCreate?'':'disabled'}"
-            ${canCreate?'onclick="genCreate()"':'disabled'}>
+    <button class="btn btn-success btn-lg" ${canCreate?'onclick="genCreate()"':'disabled'}
+            style="${!canCreate?'opacity:.5;cursor:not-allowed':''}"
+            title="${!g.hhName.trim()?'Enter a household name first':''}">
       &#127968; Create Generational Household
     </button>
+    ${!g.hhName.trim() ? `<p style="font-size:.75rem;color:#ba0517;margin-top:6px">&#9888; Please enter a household name above before creating.</p>` : ''}
     ` : ''}
 
   </div>`;
@@ -696,16 +808,20 @@ function renderGenerational() {
 function genSearchInput(val) {
   app.gen.searchVal = val;
   render();
-  // Re-focus search input after re-render
   const el = document.getElementById('genSearch');
+  if (el) { el.focus(); el.setSelectionRange(val.length, val.length); }
+}
+
+function genLookupInput(val) {
+  app.gen.lookupVal = val;
+  render();
+  const el = document.getElementById('genLookup');
   if (el) { el.focus(); el.setSelectionRange(val.length, val.length); }
 }
 
 function genSelectHH(id) {
   const hh = HOUSEHOLDS.find(h=>h.id===id);
-  if (hh && !app.gen.selected.find(h=>h.id===id)) {
-    app.gen.selected.push(hh);
-  }
+  if (hh && !app.gen.selected.find(h=>h.id===id)) app.gen.selected.push(hh);
   app.gen.searchVal = '';
   render();
 }
@@ -716,7 +832,31 @@ function genRemoveHH(id) {
 }
 
 function genCreate() {
-  app.gen.created = true;
+  const g = app.gen;
+  const totalAUM = g.selected.reduce((s,h)=>s+h.aum,0);
+  const id = 'gen_' + Date.now();
+  const now = new Date().toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
+  saveHousehold({
+    id,
+    name: g.hhName.trim(),
+    members: g.selected.map(h=>({id:h.id, name:h.name, aum:h.aum})),
+    totalAUM,
+    createdAt: now,
+  });
+  g.lastCreatedId = id;
+  g.created = true;
+  render();
+}
+
+function genDeleteSaved(id) {
+  if (!confirm('Delete this generational household? This cannot be undone.')) return;
+  deleteSaved(id);
+  app.gen.viewingId = null;
+  render();
+}
+
+function genReset() {
+  app.gen = { hhName:'', searchVal:'', selected:[], attested:false, created:false, lookupVal:'', viewingId:null };
   render();
 }
 
