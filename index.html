@@ -141,6 +141,26 @@ body {
 .search-row { display: flex; align-items: flex-start; gap: 10px; }
 .search-row .search-wrap { flex: 1; }
 
+/* Compact dropdown row (generational member search) */
+.dd-item-compact {
+  padding: 7px 12px; cursor: pointer;
+  border-bottom: 1px solid #f3f2f2;
+  display: flex; align-items: center; gap: 10px;
+  transition: background 0.1s;
+}
+.dd-item-compact:last-child { border-bottom: none; }
+.dd-item-compact:hover { background: #f0f7ff; }
+.dd-item-compact.checked-row { background: #eaf3ff; }
+.dd-item-compact input[type=checkbox] {
+  width: 15px; height: 15px; accent-color: #0070d2;
+  cursor: pointer; flex-shrink: 0;
+}
+.dd-item-compact .dd-item-info {
+  flex: 1; display: flex; align-items: center;
+  justify-content: space-between; gap: 12px;
+}
+.dd-aum-inline { font-size: 0.75rem; color: #54698d; white-space: nowrap; }
+
 /* Selected households list */
 .selected-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1rem; }
 .selected-row {
@@ -542,9 +562,6 @@ function renderStandard() {
           </div>
         </div>
       </div>
-      <button class="btn btn-success" style="height:36px;white-space:nowrap" onclick="stdOpenCreateHH()">
-        + Create Household
-      </button>
     </div>
 
     ${s.selectedHH ? `
@@ -815,12 +832,20 @@ function renderGenerational() {
              oninput="app.gen.hhName=this.value" />
     </div>
 
-    <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.5rem">
-      2. Search and select member households
-    </p>
-    <p style="font-size:.75rem;color:#706e6b;margin-bottom:.75rem">
-      Select at least 2 households. Combined AUM must reach ${fmtUSD(GEN_THRESHOLD)}.
-    </p>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;gap:12px">
+      <div>
+        <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.2rem">
+          2. Search and select member households
+        </p>
+        <p style="font-size:.75rem;color:#706e6b">
+          Select at least 2 households. Combined AUM must reach ${fmtUSD(GEN_THRESHOLD)}.
+        </p>
+      </div>
+      <button class="btn btn-success" style="white-space:nowrap;flex-shrink:0"
+              onclick="genCreate()" ${canCreate ? '' : 'disabled style="opacity:.45;cursor:not-allowed"'}>
+        + Create Household
+      </button>
+    </div>
 
     <div class="field">
       <div class="search-wrap">
@@ -836,14 +861,14 @@ function renderGenerational() {
             ? mMatches.length
               ? `${mMatches.map(h => {
                   const checked = g.pendingIds.has(h.id);
-                  return `<div class="dd-item ${checked?'checked-row':''}"
+                  return `<div class="dd-item-compact ${checked?'checked-row':''}"
                                onclick="genTogglePending(${h.id},event)">
                     <input type="checkbox" ${checked?'checked':''}
                            onclick="event.stopPropagation()"
                            onchange="genTogglePending(${h.id},event)" />
                     <div class="dd-item-info">
-                      <div class="dd-name">${escHtml(h.name)}</div>
-                      <div class="dd-aum">${fmtUSD(h.aum)} advisory AUM</div>
+                      <span class="dd-name">${escHtml(h.name)}</span>
+                      <span class="dd-aum-inline">${fmtUSD(h.aum)}</span>
                     </div>
                   </div>`;
                 }).join('')}
@@ -927,12 +952,6 @@ function renderGenerational() {
       </label>
     </div>
 
-    <button class="btn btn-success btn-lg" ${canCreate?'onclick="genCreate()"':'disabled'}
-            style="${!canCreate?'opacity:.5;cursor:not-allowed':''}"
-            title="${!g.hhName.trim()?'Enter a household name first':''}">
-      &#127968; Create Generational Household
-    </button>
-    ${!g.hhName.trim() ? `<p style="font-size:.75rem;color:#ba0517;margin-top:6px">&#9888; Please enter a household name above before creating.</p>` : ''}
     ` : ''}
 
   </div>`;
@@ -991,6 +1010,8 @@ function genRemoveHH(id) {
 function genCreate() {
   const g = app.gen;
   const totalAUM = g.selected.reduce((s,h)=>s+h.aum,0);
+  const meetsMin = totalAUM >= GEN_THRESHOLD;
+  if (!g.hhName.trim() || !meetsMin || !g.attested || g.selected.length < 2) return;
   const id = 'gen_' + Date.now();
   const now = new Date().toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
   saveHousehold({
