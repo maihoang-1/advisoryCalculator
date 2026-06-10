@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Advisory Pricing Calculator</title>
 <style>
-/* ── SLDS-faithful base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: 'Salesforce Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -15,7 +14,7 @@ body {
   min-height: 100vh;
 }
 
-/* ── App shell ── */
+/* ── App bar ── */
 .app-bar {
   background: #0070d2;
   height: 48px;
@@ -34,587 +33,726 @@ body {
   border-radius: 6px;
   display: flex; align-items: center; justify-content: center;
   color: #0070d2;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 900;
 }
-.page { max-width: 960px; margin: 1.5rem auto; padding: 0 1rem 4rem; }
+.page { max-width: 860px; margin: 1.5rem auto; padding: 0 1rem 4rem; }
 
-/* ── Lightning Card ── */
-.lightning-card {
+/* ── Card ── */
+.card {
   background: #fff;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0,0,0,.12);
   overflow: hidden;
+  margin-bottom: 1rem;
 }
 .card-header {
   border-bottom: 1px solid #dddbda;
   padding: 0.75rem 1rem;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
 }
-.card-header-icon {
+.card-header-left { display: flex; align-items: center; gap: 10px; }
+.card-icon {
   width: 32px; height: 32px; border-radius: 6px;
   background: #f4bc25;
   display: flex; align-items: center; justify-content: center;
-  font-size: 17px; flex-shrink: 0;
+  font-size: 16px; flex-shrink: 0;
 }
-.card-header-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #16325c;
-}
-.card-body { padding: 0; }
+.card-title { font-size: 1rem; font-weight: 700; color: #16325c; }
+.card-body { padding: 1.25rem; }
 
-/* ── SLDS spacing helpers ── */
-.slds-p-around_large  { padding: 1.5rem; }
-.slds-p-around_medium { padding: 1rem; }
-.slds-m-bottom_large  { margin-bottom: 1.5rem; }
-.slds-m-bottom_medium { margin-bottom: 1rem; }
-.slds-m-bottom_small  { margin-bottom: 0.5rem; }
-.slds-m-top_medium    { margin-top: 1rem; }
-.slds-m-around_small  { margin: 0.5rem; }
-.slds-p-top_medium    { padding-top: 1rem; }
-.slds-text-align_center { text-align: center; }
-
-/* ── SLDS grid ── */
-.slds-grid { display: flex; flex-wrap: wrap; }
-.slds-gutters { margin-left: -0.5rem; margin-right: -0.5rem; }
-.slds-gutters > .slds-col { padding-left: 0.5rem; padding-right: 0.5rem; }
-.slds-wrap { flex-wrap: wrap; }
-.slds-grid_align-center { justify-content: center; }
-.slds-grid_align-spread { justify-content: space-between; }
-.slds-no-flex { flex: none; }
-.slds-col { flex: 1 1 0%; min-width: 0; }
-.slds-size_1-of-1   { flex: 0 0 100%; max-width: 100%; }
-.slds-size_1-of-4   { flex: 0 0 25%;  max-width: 25%; }
-.slds-medium-size_1-of-3 { flex: 0 0 33.333%; max-width: 33.333%; }
-.slds-medium-size_1-of-2 { flex: 0 0 50%;     max-width: 50%; }
-.slds-large-size_1-of-3  { flex: 0 0 33.333%; max-width: 33.333%; }
-
-/* ── SLDS typography ── */
-.slds-text-heading_medium { font-size: 1.25rem; font-weight: 700; color: #16325c; }
-.slds-text-heading_small  { font-size: 1rem;    font-weight: 700; color: #16325c; }
-.slds-text-body_regular   { font-size: 0.875rem; color: #54698d; }
-.slds-text-color_weak     { color: #54698d; }
-
-/* ── SLDS box / shade ── */
-.slds-box {
-  border: 1px solid #dddbda;
-  border-radius: 4px;
-  padding: 1rem;
+/* ── Buttons ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 4px; border: 1px solid transparent;
+  font-size: 0.8125rem; font-weight: 700;
+  padding: 0 1rem; height: 32px;
+  cursor: pointer; transition: background 0.15s;
+  white-space: nowrap; font-family: inherit;
+  gap: 6px;
 }
-.slds-theme_shade { background: #f3f2f2; }
+.btn-brand  { background: #0070d2; border-color: #0070d2; color: #fff; }
+.btn-brand:hover  { background: #005fb2; }
+.btn-brand:disabled { background: #c9c7c5; border-color: #c9c7c5; cursor: not-allowed; }
+.btn-neutral{ background: #fff; border-color: #dddbda; color: #0070d2; }
+.btn-neutral:hover { background: #f4f6f9; }
+.btn-success{ background: #2e844a; border-color: #2e844a; color: #fff; }
+.btn-success:hover { background: #256b3a; }
+.btn-success:disabled { background: #c9c7c5; border-color: #c9c7c5; cursor: not-allowed; }
+.btn-full   { width: 100%; }
+.btn-lg     { height: 40px; font-size: 0.875rem; padding: 0 1.5rem; }
 
-/* ── Lightning Button ── */
-.lbtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  border: 1px solid transparent;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  padding: 0 1rem;
-  height: 32px;
-  cursor: pointer;
-  transition: background 0.15s, box-shadow 0.15s;
-  white-space: nowrap;
-  text-decoration: none;
-  font-family: inherit;
-}
-.lbtn-brand {
-  background: #0070d2;
-  border-color: #0070d2;
-  color: #fff;
-}
-.lbtn-brand:hover { background: #005fb2; border-color: #005fb2; }
-.lbtn-brand:focus { outline: none; box-shadow: 0 0 0 3px #d8edff; }
-.lbtn-neutral {
-  background: #fff;
-  border-color: #dddbda;
-  color: #0070d2;
-}
-.lbtn-neutral:hover { background: #f4f6f9; }
-.lbtn-neutral:focus { outline: none; box-shadow: 0 0 0 3px #d8edff; }
-.btn-full-width { width: 100%; }
-
-/* ── Lightning Input ── */
-.linput { display: flex; flex-direction: column; gap: 4px; margin-bottom: 0.75rem; }
-.linput label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #3e3e3c;
-}
-.linput input[type=number],
-.linput input[type=text] {
-  height: 32px;
-  border: 1px solid #dddbda;
-  border-radius: 4px;
-  padding: 0 8px;
-  font-size: 0.8125rem;
-  color: #181818;
-  background: #fff;
-  font-family: inherit;
+/* ── Form inputs ── */
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 0.875rem; }
+.field label { font-size: 0.75rem; font-weight: 700; color: #3e3e3c; }
+.field input[type=number],
+.field input[type=text] {
+  height: 32px; border: 1px solid #dddbda; border-radius: 4px;
+  padding: 0 8px; font-size: 0.8125rem; color: #181818;
+  background: #fff; font-family: inherit; width: 100%;
   transition: border-color 0.15s;
-  width: 100%;
 }
-.linput input:focus {
-  outline: none;
-  border-color: #0070d2;
-  box-shadow: 0 0 0 1px #0070d2;
-}
-/* Checkbox row */
-.linput-check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 0.75rem;
-  padding-top: 1.25rem;
-}
-.linput-check input[type=checkbox] {
-  width: 16px; height: 16px;
-  accent-color: #0070d2;
-  cursor: pointer;
-}
-.linput-check label {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: #3e3e3c;
-  cursor: pointer;
-}
+.field input:focus { outline: none; border-color: #0070d2; box-shadow: 0 0 0 1px #0070d2; }
+.field .tip { font-size: 0.7rem; color: #706e6b; }
 
-/* ── Result tiles (verbatim from user CSS) ── */
-.btn-full-width lightning-button { width: 100%; }
+/* Search with dropdown */
+.search-wrap { position: relative; }
+.search-wrap input { padding-left: 30px; }
+.search-icon {
+  position: absolute; left: 8px; top: 50%;
+  transform: translateY(-50%); color: #706e6b;
+  font-size: 13px; pointer-events: none;
+}
+.search-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0;
+  background: #fff; border: 1px solid #dddbda;
+  border-top: none; border-radius: 0 0 4px 4px;
+  z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  display: none; max-height: 220px; overflow-y: auto;
+}
+.search-dropdown.open { display: block; }
+.dd-item {
+  padding: 9px 12px; cursor: pointer;
+  border-bottom: 1px solid #f3f2f2;
+  display: flex; justify-content: space-between; align-items: center;
+  transition: background 0.1s;
+}
+.dd-item:last-child { border-bottom: none; }
+.dd-item:hover { background: #f0f7ff; }
+.dd-item.already { background: #f3f2f2; cursor: default; color: #706e6b; }
+.dd-name { font-weight: 600; font-size: 0.8125rem; }
+.dd-aum  { font-size: 0.75rem; color: #54698d; }
 
-.result-tile {
-  background: white;
-  border-radius: 4px;
-  padding: 12px 16px;
+/* Selected households list */
+.selected-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1rem; }
+.selected-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #f0f7ff; border: 1px solid #c9dbf0;
+  border-radius: 4px; padding: 8px 12px;
+  gap: 12px;
+}
+.selected-row-info { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.selected-row-name { font-weight: 600; font-size: 0.8125rem; color: #16325c; }
+.selected-row-aum  { font-size: 0.75rem; color: #54698d; }
+.remove-btn {
+  background: none; border: none; cursor: pointer;
+  color: #706e6b; font-size: 16px; line-height: 1;
+  padding: 2px 4px; border-radius: 2px;
+  transition: color 0.1s;
+}
+.remove-btn:hover { color: #ba0517; }
+
+/* AUM summary bar */
+.aum-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #f3f2f2; border-radius: 4px;
+  padding: 10px 14px; margin-bottom: 1rem;
+  gap: 12px; flex-wrap: wrap;
+}
+.aum-bar-item { display: flex; flex-direction: column; gap: 2px; }
+.aum-bar-label { font-size: 0.7rem; font-weight: 700; color: #706e6b; text-transform: uppercase; letter-spacing: .03em; }
+.aum-bar-value { font-size: 1rem; font-weight: 700; color: #16325c; }
+
+/* Threshold error / ok */
+.threshold-msg {
+  display: flex; align-items: center; gap: 8px;
+  border-radius: 4px; padding: 10px 14px;
+  font-size: 0.8125rem; font-weight: 600;
+  margin-bottom: 1rem;
+}
+.threshold-error { background: #fde8e8; border: 1px solid #f5a0a0; color: #ba0517; }
+.threshold-ok    { background: #e3f0e5; border: 1px solid #8ec89a; color: #2e6b3e; }
+.threshold-icon  { font-size: 16px; flex-shrink: 0; }
+
+/* Attestation */
+.attestation-box {
+  background: #fff8e1; border: 1px solid #f0c060;
+  border-radius: 4px; padding: 14px 16px;
+  margin-bottom: 1rem;
+}
+.attestation-text {
+  font-size: 0.8125rem; color: #3e3e3c; line-height: 1.5;
   margin-bottom: 12px;
-  border-left: 4px solid #0070d2;
+}
+.attestation-check {
+  display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+}
+.attestation-check input[type=checkbox] {
+  width: 16px; height: 16px; margin-top: 1px;
+  accent-color: #0070d2; cursor: pointer; flex-shrink: 0;
+}
+.attestation-check span { font-size: 0.8125rem; font-weight: 700; color: #3e3e3c; line-height: 1.4; }
+
+/* Grid */
+.grid { display: flex; flex-wrap: wrap; gap: 12px; }
+.col-3 { flex: 0 0 calc(33.33% - 8px); min-width: 180px; }
+.col-2 { flex: 0 0 calc(50% - 6px);    min-width: 180px; }
+.col-1 { flex: 0 0 100%; }
+
+/* Checkbox row for SMA */
+.check-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 0.875rem; padding-top: 1.1rem;
+}
+.check-row input[type=checkbox] { width: 16px; height: 16px; accent-color: #0070d2; cursor: pointer; }
+.check-row label { font-size: 0.8125rem; font-weight: 700; color: #3e3e3c; cursor: pointer; }
+
+/* Result tiles */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+.result-tile {
+  background: white; border-radius: 4px;
+  padding: 12px 16px; border-left: 4px solid #0070d2;
   box-shadow: 0 1px 3px rgba(0,0,0,.08);
 }
 .result-label {
-  font-size: 0.75rem;
-  color: #54698d;
-  margin: 0 0 4px 0;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 0.75rem; color: #54698d;
+  margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.04em;
 }
-.result-value {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0;
-  color: #16325c;
-}
+.result-value { font-size: 1.1rem; font-weight: 600; margin: 0; color: #16325c; }
 .result-ok   { color: #2e844a; }
 .result-warn { color: #dd7a01; }
 .result-bad  { color: #ba0517; }
 
-/* ── Illustration (generational in-dev screen) ── */
-.slds-illustration {
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 1rem;
+/* Landing */
+.landing-wrap {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
 }
-.illus-icon {
-  width: 64px; height: 64px; border-radius: 50%;
-  background: #e8f4ff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 32px;
+.landing-wrap h2 { font-size: 1.25rem; font-weight: 700; color: #16325c; margin-bottom: 0.5rem; }
+.landing-wrap p  { color: #54698d; margin-bottom: 2rem; }
+.landing-btns { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+.landing-btn-wrap {
+  background: #f8f8f8; border: 1px solid #dddbda; border-radius: 6px;
+  padding: 1.5rem 2rem; text-align: center; cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  min-width: 200px;
+}
+.landing-btn-wrap:hover { box-shadow: 0 2px 8px rgba(0,112,210,.18); border-color: #0070d2; }
+.landing-btn-icon { font-size: 2rem; margin-bottom: 8px; }
+.landing-btn-label { font-size: 0.9375rem; font-weight: 700; color: #16325c; margin-bottom: 4px; }
+.landing-btn-desc  { font-size: 0.75rem; color: #706e6b; }
+
+/* Results header area */
+.results-header {
+  background: #f3f2f2; border-radius: 4px;
+  padding: 10px 14px; margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px;
+}
+.results-header-title { font-weight: 700; color: #16325c; font-size: 0.875rem; }
+
+/* Back link */
+.back-btn { display: flex; align-items: center; gap: 4px; }
+
+/* Empty state */
+.empty-hint { color: #706e6b; font-size: 0.8125rem; font-style: italic; padding: 8px 0; }
+
+/* Divider */
+.divider { border: none; border-top: 1px solid #e8e8e8; margin: 1rem 0; }
+
+/* Success banner */
+.success-banner {
+  background: #e3f0e5; border: 1px solid #8ec89a; border-radius: 4px;
+  padding: 14px 16px; display: flex; align-items: center; gap: 10px;
+  font-size: 0.875rem; font-weight: 600; color: #1a4d2e;
 }
 
-/* ── Responsive ── */
-@media (max-width: 640px) {
-  .slds-medium-size_1-of-3 { flex: 0 0 100%; max-width: 100%; }
-  .slds-medium-size_1-of-2 { flex: 0 0 100%; max-width: 100%; }
-  .slds-large-size_1-of-3  { flex: 0 0 100%; max-width: 100%; }
-  .slds-size_1-of-4        { flex: 0 0 100%; max-width: 100%; }
+@media (max-width: 600px) {
+  .col-3, .col-2 { flex: 0 0 100%; }
+  .landing-btns { flex-direction: column; align-items: center; }
 }
 </style>
 </head>
 <body>
 
-<!-- App bar -->
 <div class="app-bar">
   <div class="app-bar-icon">&#9673;</div>
-  BFE Advisory
+  BFE Advisory Pricing Calculator
 </div>
 
 <div class="page">
-<div class="lightning-card">
-
-  <!-- Card header -->
-  <div class="card-header">
-    <div class="card-header-icon">&#128200;</div>
-    <span class="card-header-title">Advisory Pricing Calculator</span>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="card-icon">&#128200;</div>
+        <span class="card-title">Advisory Pricing Calculator</span>
+      </div>
+      <div id="backBtnSlot"></div>
+    </div>
+    <div class="card-body" id="root"></div>
   </div>
-
-  <div class="card-body" id="root"></div>
-
-</div><!-- /lightning-card -->
-</div><!-- /page -->
-
+</div>
 
 <script>
 // ═══════════════════════════════════════════════════════
-//  STATE  (mirrors LWC @track properties)
+//  MOCK DATA
 // ═══════════════════════════════════════════════════════
 
-const state = {
-  householdType: null,    // null | 'standard' | 'generational'
-  acctAUM:      0,
-  hhAUMTotal:   0,
-  acFees:       0,
-  newmin:       0,
-  grossRevenue: 0,
-  netRevenue:   0,
-  isSMAFixed:   false,
-  resultsReady: false,
-  results:      {},
+const HOUSEHOLDS = [
+  { id:1, name:'Anderson, James & Linda',  aum:1850000 },
+  { id:2, name:'Martinez, Carlos',          aum: 620000 },
+  { id:3, name:'Chen, Wei & Mei',            aum:3200000 },
+  { id:4, name:'Williams, Robert',           aum: 490000 },
+  { id:5, name:'Thompson, Sarah',            aum:2100000 },
+  { id:6, name:'Johnson, David & Karen',     aum: 975000 },
+  { id:7, name:'Davis, Patricia',            aum:5400000 },
+  { id:8, name:'Wilson, Michael & Sue',      aum:1100000 },
+  { id:9, name:'Garcia, Elena',              aum: 340000 },
+  { id:10,name:'Brown, Thomas & Patricia',   aum: 780000 },
+];
+
+const GEN_THRESHOLD = 1500000;   // $1.5M combined AUM required
+
+// ═══════════════════════════════════════════════════════
+//  APP STATE
+// ═══════════════════════════════════════════════════════
+
+const app = {
+  screen: 'landing',   // 'landing' | 'standard' | 'generational'
+
+  // Standard calc
+  std: {
+    acctAUM:0, hhAUMTotal:0, acFees:0, newmin:0,
+    grossRevenue:0, netRevenue:0, isSMAFixed:false,
+    resultsReady:false, results:{},
+  },
+
+  // Generational
+  gen: {
+    searchVal: '',
+    selected: [],          // array of household objects
+    attested: false,
+    created: false,
+  },
 };
 
 // ═══════════════════════════════════════════════════════
-//  FEE TIER HELPERS  (exact SQL Section 1)
+//  FEE HELPERS (SQL §1)
 // ═══════════════════════════════════════════════════════
 
-function smaFixedFee(a) {
-  a = a || 0;
-  if (a < 250000)  return a * 75 / 10000;
-  if (a < 1000000) return 1875  + (a - 250000)  * 60 / 10000;
-  if (a < 2000000) return 6375  + (a - 1000000) * 50 / 10000;
-  if (a < 4000000) return 11375 + (a - 2000000) * 40 / 10000;
-  if (a < 7000000) return 19375 + (a - 4000000) * 30 / 10000;
-  return 28375 + (a - 7000000) * 25 / 10000;
-}
-
-function advFee(a) {
-  a = a || 0;
-  if (a < 250000)  return a * 100 / 10000;
-  if (a < 1000000) return 2500  + (a - 250000)  * 80 / 10000;
-  if (a < 2000000) return 8500  + (a - 1000000) * 60 / 10000;
-  if (a < 4000000) return 14500 + (a - 2000000) * 40 / 10000;
-  if (a < 7000000) return 22500 + (a - 4000000) * 30 / 10000;
-  return 31500 + (a - 7000000) * 25 / 10000;
-}
-
-function overheadFee(a) {
-  a = a || 0;
-  if (a < 250000)  return a * 38 / 10000;
-  if (a < 1000000) return 950  + (a - 250000)  * 31 / 10000;
-  if (a < 2000000) return 3275 + (a - 1000000) * 23 / 10000;
-  if (a < 4000000) return 5575 + (a - 2000000) * 15 / 10000;
-  if (a < 7000000) return 8575 + (a - 4000000) * 11 / 10000;
-  return 11875 + (a - 7000000) * 9 / 10000;
-}
+const smaFixedFee = a => {
+  a=a||0;
+  if(a<250000)  return a*75/10000;
+  if(a<1000000) return 1875+(a-250000)*60/10000;
+  if(a<2000000) return 6375+(a-1000000)*50/10000;
+  if(a<4000000) return 11375+(a-2000000)*40/10000;
+  if(a<7000000) return 19375+(a-4000000)*30/10000;
+  return 28375+(a-7000000)*25/10000;
+};
+const advFee = a => {
+  a=a||0;
+  if(a<250000)  return a*100/10000;
+  if(a<1000000) return 2500+(a-250000)*80/10000;
+  if(a<2000000) return 8500+(a-1000000)*60/10000;
+  if(a<4000000) return 14500+(a-2000000)*40/10000;
+  if(a<7000000) return 22500+(a-4000000)*30/10000;
+  return 31500+(a-7000000)*25/10000;
+};
+const overheadFee = a => {
+  a=a||0;
+  if(a<250000)  return a*38/10000;
+  if(a<1000000) return 950+(a-250000)*31/10000;
+  if(a<2000000) return 3275+(a-1000000)*23/10000;
+  if(a<4000000) return 5575+(a-2000000)*15/10000;
+  if(a<7000000) return 8575+(a-4000000)*11/10000;
+  return 11875+(a-7000000)*9/10000;
+};
 
 // ═══════════════════════════════════════════════════════
-//  CORE CALCULATION  (mirrors LWC calculate() + SQL §1-3)
+//  CALC ENGINE (SQL §1-3)
 // ═══════════════════════════════════════════════════════
 
-function calculate() {
-  const acctAUM    = state.acctAUM;
-  const hhAUM      = state.hhAUMTotal;  // used as both HHAdvAUMTotal and HHAUMTotal
-  const acFees     = state.acFees;
-  const newmin     = state.newmin;
-  const isSMA      = state.isSMAFixed;
-
-  // § 1 – HH-level fee schedules
-  const smaFixed_HH = smaFixedFee(hhAUM);
-  const adv_HH      = advFee(hhAUM);
-
-  // § 2a – AcctMinBPNoHHDiscounts
+function runCalc(acctAUM, hhAUM, acFees, newmin, isSMA, grossRev, netRev) {
   const acctMinDollar = isSMA ? smaFixedFee(acctAUM) : advFee(acctAUM);
-  const acctMinBP     = (acctMinDollar / (acctAUM || 1)) * 10000;
+  const acctMinBP     = (acctMinDollar / (acctAUM||1)) * 10000;
 
-  // § 2b – MinWithHHdiscounts
-  // HH base rate in bps (using HH advisory AUM as denominator)
-  const hhBaseFee = isSMA ? smaFixed_HH : adv_HH;
-  const hhBaseBP  = (hhBaseFee / (hhAUM || 1)) * 10000;
+  const hhBaseFee     = isSMA ? smaFixedFee(hhAUM) : advFee(hhAUM);
+  const hhBaseBP      = (hhBaseFee / (hhAUM||1)) * 10000;
+  const acctOvhBP     = (overheadFee(acctAUM) / (hhAUM||1)) * 10000;
+  const hhOvhBP       = (overheadFee(hhAUM)   / (hhAUM||1)) * 10000;
+  const minWithHH     = hhBaseBP - (acctOvhBP - hhOvhBP);
 
-  // Per-account overhead / HH advisory AUM  (E.OverheadNoDiscounts / HHAdvAUMTotal)
-  const acctOverheadBP = (overheadFee(acctAUM) / (hhAUM || 1)) * 10000;
+  const qualifies     = hhAUM >= 1000000;
+  const estPartAcct   = Math.max(0, acctMinBP + newmin - acFees);
+  const estPartHH     = Math.max(0, minWithHH  + newmin - acFees);
+  const partMinFee    = qualifies ? minWithHH  : acctMinBP;
+  const estPart       = qualifies ? estPartHH  : estPartAcct;
 
-  // HH blended overhead rate using total HH AUM  (overheadFee(HHAUMTotal) / HHAUMTotal)
-  const hhOverheadBP = (overheadFee(hhAUM) / (hhAUM || 1)) * 10000;
-
-  const minWithHH = hhBaseBP - (acctOverheadBP - hhOverheadBP);
-
-  // § 3 – Participation & pay rate
-  // QualifiesForHHDiscount: HHAUMTotal >= 1,000,000
-  const qualifies = hhAUM >= 1000000;
-
-  const estPartAcct = Math.max(0, acctMinBP + newmin - acFees);
-  const estPartHH   = Math.max(0, minWithHH  + newmin - acFees);
-
-  const participationMinFee = qualifies ? minWithHH  : acctMinBP;
-  const estParticipation    = qualifies ? estPartHH  : estPartAcct;
-
-  // PayRate – exact SQL CASE logic
   let payRate;
   if      (qualifies  && estPartHH   > 50) payRate = 0;
   else if (!qualifies && estPartAcct > 50) payRate = 0;
-  else if (qualifies)                      payRate = 0.5 - (estPartHH   / 100);
-  else                                     payRate = 0.5 - (estPartAcct / 100);
+  else if (qualifies)                      payRate = 0.5 - estPartHH/100;
+  else                                     payRate = 0.5 - estPartAcct/100;
 
-  // ChangeinNet = ROUND((ParticipationPayRate * GrossRevenue) – NetRevenue, 2)
-  const changeInNet = Math.round(
-    ((payRate * state.grossRevenue) - state.netRevenue) * 100
-  ) / 100;
+  const changeInNet = Math.round((payRate*grossRev - netRev)*100)/100;
 
-  state.results = {
-    qualifiesForHHDiscount : qualifies ? 'Yes' : 'No',
-    acctMinBPNoHHDiscounts : acctMinBP.toFixed(2) + ' bps',
-    minWithHHDiscounts     : minWithHH.toFixed(2) + ' bps',
-    participationMinimumFee: participationMinFee.toFixed(2) + ' bps',
-    estimatedParticipation : estParticipation.toFixed(2) + ' bps',
-    participationPayRate   : (payRate * 100).toFixed(1) + '%',
-    changeInNet            : '$' + changeInNet.toLocaleString('en-US', { minimumFractionDigits: 2 }),
-    participationClass     : estParticipation > 0  ? 'result-warn' : 'result-ok',
-    payRateClass           : payRate === 0         ? 'result-bad'  : 'result-ok',
-    changeClass            : changeInNet < 0       ? 'result-bad'  : 'result-ok',
+  return {
+    qualifies,
+    acctMinBP, minWithHH, partMinFee, estPart, payRate, changeInNet,
+    grossRev,
   };
-  state.resultsReady = true;
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER ROUTER
+// ═══════════════════════════════════════════════════════
+
+function render() {
+  document.getElementById('root').innerHTML =
+    app.screen === 'landing'      ? renderLanding()
+    : app.screen === 'standard'   ? renderStandard()
+    : renderGenerational();
+
+  document.getElementById('backBtnSlot').innerHTML =
+    app.screen !== 'landing'
+      ? `<button class="btn btn-neutral back-btn" onclick="goBack()">&#8592; Back</button>`
+      : '';
+}
+
+function goBack() {
+  app.screen = 'landing';
   render();
 }
 
 // ═══════════════════════════════════════════════════════
-//  NAVIGATION
+//  LANDING
 // ═══════════════════════════════════════════════════════
-
-function selectStandard()     { state.householdType = 'standard';     state.resultsReady = false; render(); }
-function selectGenerational() { state.householdType = 'generational'; render(); }
-function goBack()             { state.householdType = null;            state.resultsReady = false; render(); }
-
-// ═══════════════════════════════════════════════════════
-//  INPUT HANDLERS
-// ═══════════════════════════════════════════════════════
-
-function handleAcctAUM(e)      { state.acctAUM      = parseFloat(e.target.value) || 0; }
-function handleHHAUM(e)        { state.hhAUMTotal   = parseFloat(e.target.value) || 0; }
-function handleAcFees(e)       { state.acFees       = parseFloat(e.target.value) || 0; }
-function handleNewmin(e)       { state.newmin       = parseFloat(e.target.value) || 0; }
-function handleGrossRevenue(e) { state.grossRevenue = parseFloat(e.target.value) || 0; }
-function handleNetRevenue(e)   { state.netRevenue   = parseFloat(e.target.value) || 0; }
-function handleSMAFixed(e)     { state.isSMAFixed   = e.target.checked; }
-
-// ═══════════════════════════════════════════════════════
-//  RENDER
-// ═══════════════════════════════════════════════════════
-
-function render() {
-  const root = document.getElementById('root');
-  const ht   = state.householdType;
-
-  if (!ht) {
-    root.innerHTML = renderLanding();
-  } else if (ht === 'generational') {
-    root.innerHTML = renderGenerational();
-  } else {
-    root.innerHTML = renderStandard();
-  }
-}
-
-// ── Landing ──────────────────────────────────────────────────────────────
 
 function renderLanding() {
   return `
-  <div class="slds-p-around_large slds-text-align_center">
-    <h2 class="slds-text-heading_medium slds-m-bottom_large">
-      Select Household Type
-    </h2>
-    <div class="slds-grid slds-gutters slds-grid_align-center">
-      <div class="slds-col slds-size_1-of-4">
-        <button class="lbtn lbtn-brand btn-full-width slds-m-around_small"
-                onclick="selectStandard()">
-          Standard Household
-        </button>
+  <div class="landing-wrap">
+    <h2>Select Household Type</h2>
+    <p>Choose how you'd like to set up this advisory calculation.</p>
+    <div class="landing-btns">
+      <div class="landing-btn-wrap" onclick="app.screen='standard';render()">
+        <div class="landing-btn-icon">&#127968;</div>
+        <div class="landing-btn-label">Standard Household</div>
+        <div class="landing-btn-desc">Single household pricing calculator</div>
       </div>
-      <div class="slds-col slds-size_1-of-4">
-        <button class="lbtn lbtn-neutral btn-full-width slds-m-around_small"
-                onclick="selectGenerational()">
-          Generational Household
-        </button>
+      <div class="landing-btn-wrap" onclick="app.screen='generational';app.gen={searchVal:'',selected:[],attested:false,created:false};render()">
+        <div class="landing-btn-icon">&#128106;</div>
+        <div class="landing-btn-label">Generational Household</div>
+        <div class="landing-btn-desc">Combine multiple households under one group</div>
       </div>
     </div>
   </div>`;
 }
 
-// ── Generational: still in development ───────────────────────────────────
-
-function renderGenerational() {
-  return `
-  <div class="slds-p-around_large slds-text-align_center">
-    <div class="slds-illustration slds-m-bottom_medium">
-      <div class="illus-icon">&#128295;</div>
-    </div>
-    <h2 class="slds-text-heading_medium slds-m-bottom_small">Still in Development</h2>
-    <p class="slds-text-body_regular slds-text-color_weak slds-m-bottom_large">
-      Generational Household pricing is coming soon.
-    </p>
-    <button class="lbtn lbtn-neutral" onclick="goBack()">&#8592; Back</button>
-  </div>`;
-}
-
-// ── Standard Household Calculator ────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+//  STANDARD CALCULATOR
+// ═══════════════════════════════════════════════════════
 
 function renderStandard() {
-  const r = state.results;
+  const s = app.std;
+  const r = s.results;
   return `
-  <div class="slds-p-around_medium">
-
-    <!-- Header row -->
-    <div class="slds-grid slds-gutters slds-m-bottom_medium slds-grid_align-spread">
-      <div class="slds-col">
-        <h2 class="slds-text-heading_small">Standard Household Calculator</h2>
-      </div>
-      <div class="slds-col slds-no-flex">
-        <button class="lbtn lbtn-neutral" onclick="goBack()">&#8592; Back</button>
-      </div>
-    </div>
-
-    <!-- Inputs -->
-    <div class="slds-grid slds-gutters slds-wrap slds-m-bottom_medium">
-
-      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
-        <div class="linput">
+  <div>
+    <div class="grid">
+      <div class="col-3">
+        <div class="field">
           <label>Account AUM ($)</label>
-          <input type="number" value="${state.acctAUM || ''}"
-                 placeholder="0" step="1000" min="0"
-                 oninput="handleAcctAUM(event)" />
+          <input type="number" value="${s.acctAUM||''}" placeholder="e.g. 500000"
+                 step="1000" min="0" oninput="app.std.acctAUM=parseFloat(this.value)||0" />
         </div>
       </div>
-
-      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
-        <div class="linput">
+      <div class="col-3">
+        <div class="field">
           <label>Total HH AUM ($)</label>
-          <input type="number" value="${state.hhAUMTotal || ''}"
-                 placeholder="0" step="1000" min="0"
-                 oninput="handleHHAUM(event)" />
+          <input type="number" value="${s.hhAUMTotal||''}" placeholder="e.g. 1200000"
+                 step="1000" min="0" oninput="app.std.hhAUMTotal=parseFloat(this.value)||0" />
         </div>
       </div>
-
-      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
-        <div class="linput">
+      <div class="col-3">
+        <div class="field">
           <label>Actual Client Fee (bps)</label>
-          <input type="number" value="${state.acFees || ''}"
-                 placeholder="0" step="0.01" min="0"
-                 oninput="handleAcFees(event)" />
+          <input type="number" value="${s.acFees||''}" placeholder="e.g. 75"
+                 step="0.01" min="0" oninput="app.std.acFees=parseFloat(this.value)||0" />
         </div>
       </div>
-
-      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
-        <div class="linput">
-          <label>Manager Fee Add-on (newmin, bps)</label>
-          <input type="number" value="${state.newmin || ''}"
-                 placeholder="0" step="0.01" min="0"
-                 oninput="handleNewmin(event)" />
+      <div class="col-3">
+        <div class="field">
+          <label>Manager Fee Add-on (bps)</label>
+          <input type="number" value="${s.newmin||''}" placeholder="e.g. 10"
+                 step="0.01" min="0" oninput="app.std.newmin=parseFloat(this.value)||0" />
         </div>
       </div>
-
-      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
-        <div class="linput">
+      <div class="col-3">
+        <div class="field">
           <label>Gross Revenue ($)</label>
-          <input type="number" value="${state.grossRevenue || ''}"
-                 placeholder="0" step="100" min="0"
-                 oninput="handleGrossRevenue(event)" />
+          <input type="number" value="${s.grossRevenue||''}" placeholder="e.g. 3750"
+                 step="100" min="0" oninput="app.std.grossRevenue=parseFloat(this.value)||0" />
         </div>
       </div>
-
-      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
-        <div class="linput">
-          <label>Net Revenue (standard discount, $)</label>
-          <input type="number" value="${state.netRevenue || ''}"
-                 placeholder="0" step="100" min="0"
-                 oninput="handleNetRevenue(event)" />
+      <div class="col-3">
+        <div class="field">
+          <label>Net Revenue ($)</label>
+          <input type="number" value="${s.netRevenue||''}" placeholder="e.g. 1875"
+                 step="100" min="0" oninput="app.std.netRevenue=parseFloat(this.value)||0" />
         </div>
       </div>
-
-      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
-        <div class="linput-check">
-          <input type="checkbox" id="smaCheck"
-                 ${state.isSMAFixed ? 'checked' : ''}
-                 onchange="handleSMAFixed(event)" />
-          <label for="smaCheck">SMA Fixed-Fee Account?</label>
+      <div class="col-3">
+        <div class="check-row">
+          <input type="checkbox" id="smaChk" ${s.isSMAFixed?'checked':''}
+                 onchange="app.std.isSMAFixed=this.checked" />
+          <label for="smaChk">SMA Fixed-Fee Account?</label>
         </div>
       </div>
-
-    </div><!-- /inputs grid -->
-
-    <button class="lbtn lbtn-brand slds-m-bottom_medium"
-            onclick="calculate()">
-      Calculate
-    </button>
-
-    <!-- Results -->
-    ${state.resultsReady ? renderResults(r) : ''}
-
-  </div>`;
-}
-
-// ── Results tiles ─────────────────────────────────────────────────────────
-
-function renderResults(r) {
-  return `
-  <div class="slds-box slds-theme_shade slds-m-top_medium">
-    <h3 class="slds-text-heading_small slds-m-bottom_medium">Results</h3>
-
-    <div class="slds-grid slds-gutters slds-wrap">
-
-      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-3">
-        <div class="result-tile">
-          <p class="result-label">Qualifies for HH Discount</p>
-          <p class="result-value">${r.qualifiesForHHDiscount}</p>
-        </div>
-      </div>
-
-      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-3">
-        <div class="result-tile">
-          <p class="result-label">Acct Minimum (No HH Discount, bps)</p>
-          <p class="result-value">${r.acctMinBPNoHHDiscounts}</p>
-        </div>
-      </div>
-
-      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-3">
-        <div class="result-tile">
-          <p class="result-label">Minimum with HH Discount (bps)</p>
-          <p class="result-value">${r.minWithHHDiscounts}</p>
-        </div>
-      </div>
-
-      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-3">
-        <div class="result-tile">
-          <p class="result-label">Participation Minimum Fee (bps)</p>
-          <p class="result-value">${r.participationMinimumFee}</p>
-        </div>
-      </div>
-
-      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-3">
-        <div class="result-tile">
-          <p class="result-label">Estimated Participation Gap (bps)</p>
-          <p class="result-value ${r.participationClass}">${r.estimatedParticipation}</p>
-        </div>
-      </div>
-
-      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-3">
-        <div class="result-tile">
-          <p class="result-label">Participation Pay Rate</p>
-          <p class="result-value ${r.payRateClass}">${r.participationPayRate}</p>
-        </div>
-      </div>
-
-      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-3">
-        <div class="result-tile">
-          <p class="result-label">Change in Net Revenue ($)</p>
-          <p class="result-value ${r.changeClass}">${r.changeInNet}</p>
-        </div>
-      </div>
-
     </div>
+
+    <button class="btn btn-brand btn-lg" onclick="stdCalculate()">Calculate</button>
+
+    ${s.resultsReady ? `
+    <hr class="divider" />
+    <div class="results-header">
+      <span class="results-header-title">Results</span>
+      <span style="font-size:.75rem;color:#54698d">
+        HH AUM ${fmtUSD(s.hhAUMTotal)} &nbsp;|&nbsp;
+        ${r.qualifies ? '&#9989; Qualifies for HH Discount' : '&#9888;&#65039; No HH Discount'}
+      </span>
+    </div>
+    <div class="results-grid">
+      <div class="result-tile">
+        <p class="result-label">Acct Min (No HH Disc.)</p>
+        <p class="result-value">${r.acctMinBP.toFixed(2)} bps</p>
+      </div>
+      <div class="result-tile">
+        <p class="result-label">Min With HH Discount</p>
+        <p class="result-value">${r.minWithHH.toFixed(2)} bps</p>
+      </div>
+      <div class="result-tile">
+        <p class="result-label">Participation Minimum Fee</p>
+        <p class="result-value">${r.partMinFee.toFixed(2)} bps</p>
+      </div>
+      <div class="result-tile">
+        <p class="result-label">Estimated Participation Gap</p>
+        <p class="result-value ${r.estPart>0?'result-warn':'result-ok'}">${r.estPart.toFixed(2)} bps</p>
+      </div>
+      <div class="result-tile">
+        <p class="result-label">Participation Pay Rate</p>
+        <p class="result-value ${r.payRate===0?'result-bad':'result-ok'}">${(r.payRate*100).toFixed(1)}%</p>
+      </div>
+      <div class="result-tile">
+        <p class="result-label">Change in Net Revenue</p>
+        <p class="result-value ${r.changeInNet<0?'result-bad':'result-ok'}">$${r.changeInNet.toLocaleString('en-US',{minimumFractionDigits:2})}</p>
+      </div>
+    </div>` : ''}
   </div>`;
 }
 
-// ── Boot ──────────────────────────────────────────────────────────────────
+function stdCalculate() {
+  const s = app.std;
+  if (!s.acctAUM)    { alert('Please enter Account AUM.'); return; }
+  if (!s.hhAUMTotal) { alert('Please enter Total HH AUM.'); return; }
+  app.std.results = runCalc(s.acctAUM, s.hhAUMTotal, s.acFees, s.newmin,
+                             s.isSMAFixed, s.grossRevenue, s.netRevenue);
+  app.std.resultsReady = true;
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+//  GENERATIONAL HOUSEHOLD
+// ═══════════════════════════════════════════════════════
+
+function renderGenerational() {
+  const g          = app.gen;
+  const totalAUM   = g.selected.reduce((s,h)=>s+h.aum, 0);
+  const meetsMin   = totalAUM >= GEN_THRESHOLD;
+  const canCreate  = meetsMin && g.attested && g.selected.length >= 2;
+  const selectedIds= new Set(g.selected.map(h=>h.id));
+
+  // Filter search results
+  const query   = (g.searchVal||'').toLowerCase().trim();
+  const matches = query
+    ? HOUSEHOLDS.filter(h => h.name.toLowerCase().includes(query) && !selectedIds.has(h.id))
+    : [];
+
+  if (g.created) {
+    return `
+    <div class="success-banner">
+      &#9989;&nbsp; Generational household created successfully with ${g.selected.length} member households
+      and a combined AUM of ${fmtUSD(totalAUM)}.
+    </div>
+    <div style="margin-top:1rem">
+      <button class="btn btn-neutral" onclick="app.gen.created=false;app.gen.selected=[];app.gen.attested=false;render()">
+        + Create Another
+      </button>
+    </div>`;
+  }
+
+  return `
+  <div>
+
+    <!-- Step 1: Search & select households -->
+    <div style="margin-bottom:0.25rem">
+      <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.5rem">
+        1. Search and select member households
+      </p>
+      <p style="font-size:.75rem;color:#706e6b;margin-bottom:.75rem">
+        Select at least 2 households. Combined AUM must reach ${fmtUSD(GEN_THRESHOLD)}.
+      </p>
+    </div>
+
+    <div class="field">
+      <div class="search-wrap">
+        <span class="search-icon">&#128269;</span>
+        <input type="text"
+               id="genSearch"
+               value="${escHtml(g.searchVal)}"
+               placeholder="Search household name…"
+               autocomplete="off"
+               oninput="genSearchInput(this.value)" />
+        <div class="search-dropdown ${query && matches.length ? 'open' : ''}" id="genDropdown">
+          ${matches.length
+            ? matches.map(h=>`
+              <div class="dd-item" onclick="genSelectHH(${h.id})">
+                <div>
+                  <div class="dd-name">${escHtml(h.name)}</div>
+                  <div class="dd-aum">${fmtUSD(h.aum)} advisory AUM</div>
+                </div>
+                <button class="btn btn-brand" style="height:26px;padding:0 10px;font-size:.75rem">Add</button>
+              </div>`).join('')
+            : query
+              ? `<div class="dd-item" style="color:#706e6b;cursor:default">No households found</div>`
+              : ''}
+        </div>
+      </div>
+    </div>
+
+    <!-- Selected list -->
+    ${g.selected.length
+      ? `<div class="selected-list">
+          ${g.selected.map(h=>`
+          <div class="selected-row">
+            <div class="selected-row-info">
+              <span class="selected-row-name">${escHtml(h.name)}</span>
+              <span class="selected-row-aum">${fmtUSD(h.aum)} advisory AUM</span>
+            </div>
+            <button class="remove-btn" title="Remove" onclick="genRemoveHH(${h.id})">&#215;</button>
+          </div>`).join('')}
+        </div>`
+      : `<p class="empty-hint">No households selected yet — search above to add members.</p>`}
+
+    <!-- AUM summary -->
+    ${g.selected.length ? `
+    <div class="aum-bar">
+      <div class="aum-bar-item">
+        <span class="aum-bar-label">Members selected</span>
+        <span class="aum-bar-value">${g.selected.length}</span>
+      </div>
+      <div class="aum-bar-item">
+        <span class="aum-bar-label">Combined Advisory AUM</span>
+        <span class="aum-bar-value">${fmtUSD(totalAUM)}</span>
+      </div>
+      <div class="aum-bar-item">
+        <span class="aum-bar-label">Minimum Required</span>
+        <span class="aum-bar-value">${fmtUSD(GEN_THRESHOLD)}</span>
+      </div>
+    </div>
+
+    <!-- Threshold status -->
+    ${meetsMin
+      ? `<div class="threshold-msg threshold-ok">
+           <span class="threshold-icon">&#9989;</span>
+           Combined AUM of ${fmtUSD(totalAUM)} meets the ${fmtUSD(GEN_THRESHOLD)} threshold.
+         </div>`
+      : `<div class="threshold-msg threshold-error">
+           <span class="threshold-icon">&#9888;&#65039;</span>
+           Combined AUM of ${fmtUSD(totalAUM)} is below the required ${fmtUSD(GEN_THRESHOLD)} threshold.
+           You need ${fmtUSD(GEN_THRESHOLD - totalAUM)} more to proceed.
+         </div>`}
+    ` : ''}
+
+    <!-- Step 2: Attestation (only show once threshold is met) -->
+    ${meetsMin && g.selected.length >= 2 ? `
+    <hr class="divider" />
+    <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.75rem">
+      2. Attestation
+    </p>
+    <div class="attestation-box">
+      <p class="attestation-text">
+        By creating this Generational Household, I attest that the households listed above
+        qualify as a generational household unit under firm policy. I confirm that the
+        relationships between these households have been verified, that all required
+        documentation is on file, and that I am authorized to establish this grouping.
+        This designation affects fee calculations and household discount eligibility.
+        <br /><br />
+        <em style="color:#706e6b;font-size:.75rem">
+          Final attestation language will be provided by Legal.
+        </em>
+      </p>
+      <label class="attestation-check">
+        <input type="checkbox" ${g.attested?'checked':''}
+               onchange="app.gen.attested=this.checked;render()" />
+        <span>I have read and agree to the above attestation statement.</span>
+      </label>
+    </div>
+
+    <!-- Step 3: Create button -->
+    <button class="btn btn-success btn-lg ${canCreate?'':'disabled'}"
+            ${canCreate?'onclick="genCreate()"':'disabled'}>
+      &#127968; Create Generational Household
+    </button>
+    ` : ''}
+
+  </div>`;
+}
+
+function genSearchInput(val) {
+  app.gen.searchVal = val;
+  render();
+  // Re-focus search input after re-render
+  const el = document.getElementById('genSearch');
+  if (el) { el.focus(); el.setSelectionRange(val.length, val.length); }
+}
+
+function genSelectHH(id) {
+  const hh = HOUSEHOLDS.find(h=>h.id===id);
+  if (hh && !app.gen.selected.find(h=>h.id===id)) {
+    app.gen.selected.push(hh);
+  }
+  app.gen.searchVal = '';
+  render();
+}
+
+function genRemoveHH(id) {
+  app.gen.selected = app.gen.selected.filter(h=>h.id!==id);
+  render();
+}
+
+function genCreate() {
+  app.gen.created = true;
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════
+
+function fmtUSD(n) {
+  return '$' + Number(n||0).toLocaleString('en-US');
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap')) {
+    app.gen.searchVal = '';
+    const dd = document.getElementById('genDropdown');
+    if (dd) dd.classList.remove('open');
+  }
+});
+
+// Boot
 render();
 </script>
 </body>
