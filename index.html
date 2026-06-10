@@ -405,11 +405,56 @@
   #landing p { font-size: 13px; color: #555; margin-bottom: 28px; }
   #landing .btn { width: 100%; padding: 14px; font-size: 15px; }
 
+  /* ── Per-investment results table ── */
+  .inv-results-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 16px; }
+  .inv-results-table th {
+    background: #37474f;
+    color: #fff;
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .inv-results-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; font-size: 12px; vertical-align: middle; }
+  .inv-results-table tr:nth-child(even) td { background: #fafafa; }
+  .val-ok   { color: #1a6b2a; font-weight: 700; }
+  .val-warn { color: #bf360c; font-weight: 700; }
+  .val-bad  { color: #c62828; font-weight: 700; }
+  .val-neutral { color: #0052a3; font-weight: 700; }
+
+  /* ── Summary strip ── */
+  .summary-strip {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    background: #0176d3; border-radius: 6px;
+    padding: 14px 18px; margin-bottom: 16px;
+  }
+  .summary-strip .s-item { flex: 1; min-width: 130px; }
+  .summary-strip .s-label { font-size: 10px; color: rgba(255,255,255,.75); text-transform: uppercase; letter-spacing: .5px; }
+  .summary-strip .s-value { font-size: 16px; font-weight: 700; color: #fff; margin-top: 2px; }
+
+  /* ── Editable fee cell ── */
+  .fee-input-wrap { display: flex; align-items: center; gap: 4px; }
+  .fee-input-wrap input {
+    width: 64px; height: 26px;
+    border: 1px solid #c9c9c9; border-radius: 4px;
+    padding: 0 6px; font-size: 12px; text-align: right;
+  }
+  .fee-input-wrap .bps-label { font-size: 11px; color: #666; }
+
+  /* ── Manual override notice ── */
+  .manual-note {
+    background: #e8f4fd; border: 1px solid #90caf9;
+    border-radius: 6px; padding: 8px 12px;
+    font-size: 12px; color: #0d47a1; margin-bottom: 14px;
+  }
+
   /* ── Responsive ── */
   @media(max-width:600px){
     .results-grid { grid-template-columns: 1fr 1fr; }
     .strat-table { font-size: 11px; }
     .modal { width: 98vw; }
+    .summary-strip { flex-direction: column; }
   }
 </style>
 </head>
@@ -511,7 +556,7 @@
     <div class="card-body">
       <div class="brok-row">
         <label>Additional Brokerage AUM (optional)</label>
-        <input type="number" id="brokAUM" placeholder="$0.00" oninput="updateCalcInput('brokAUM', this.value)" />
+        <input type="number" id="brokAUM" placeholder="$0.00" oninput="syncInput('brokAUM', this.value)" />
       </div>
       <span class="tip">Include brokerage assets that count toward household AUM thresholds but are not fee-eligible advisory accounts.</span>
     </div>
@@ -523,22 +568,26 @@
       <h2>&#128200; Investments</h2>
     </div>
     <div class="card-body">
-      <table class="inv-table">
-        <thead>
-          <tr>
-            <th style="width:22%">Account / Investment Name</th>
-            <th style="width:16%">Investment Amount</th>
-            <th style="width:22%">Investment Object (Strategy)</th>
-            <th style="width:14%">Client Fee (bps)</th>
-            <th style="width:14%">Manager Fee</th>
-            <th style="width:12%">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="invTableBody">
-          <!-- Rows injected by JS -->
-        </tbody>
-      </table>
-      <div id="invEmpty" class="empty-state" style="display:none">
+      <div class="manual-note">
+        Client fees default to the strategy minimum when a strategy is selected. You can override them per row. Gross Revenue is auto-calculated as <strong>Client Fee (bps) × Investment Amount ÷ 10,000</strong>.
+      </div>
+      <div style="overflow-x:auto">
+        <table class="inv-table">
+          <thead>
+            <tr>
+              <th style="min-width:160px">Account / Investment Name</th>
+              <th style="min-width:130px">Investment Amount ($)</th>
+              <th style="min-width:180px">Strategy (Program)</th>
+              <th style="min-width:110px">Client Fee (bps)</th>
+              <th style="min-width:90px">Mgr Fee (bps)</th>
+              <th style="min-width:100px">Gross Revenue</th>
+              <th style="min-width:60px"></th>
+            </tr>
+          </thead>
+          <tbody id="invTableBody"></tbody>
+        </table>
+      </div>
+      <div id="invEmpty" class="empty-state">
         <div class="icon">&#128196;</div>
         <div>No investments added yet. Click below to add one.</div>
       </div>
@@ -548,45 +597,68 @@
     </div>
   </div>
 
-  <!-- ── Manual Inputs for Calculation ── -->
+  <!-- ── Calculation Inputs ── -->
   <div class="card">
     <div class="card-header">
       <h2>&#128736;&#65039; Calculation Inputs</h2>
     </div>
     <div class="card-body">
+      <div class="manual-note" id="investmentsDrivenNote" style="display:none">
+        Account AUM and Gross Revenue are auto-derived from the investments table above.
+        Only <strong>Net Revenue</strong> requires manual input.
+      </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Account AUM ($)</label>
-          <input type="number" id="acctAUM" placeholder="e.g. 500000" oninput="syncInput('acctAUM', this.value)" />
+          <label>HH Advisory AUM ($)</label>
+          <input type="number" id="hhAdvAUM" placeholder="e.g. 1200000"
+                 oninput="syncInput('hhAdvAUM', this.value); updateHHTotalDisplay()" />
+          <span class="tip">Advisory accounts only (auto-filled from household)</span>
         </div>
         <div class="form-group">
-          <label>HH Advisory AUM Total ($)</label>
-          <input type="number" id="hhAUMTotal" placeholder="e.g. 1200000" oninput="syncInput('hhAUMTotal', this.value)" />
+          <label>Total HH AUM (Advisory + Brokerage)</label>
+          <input type="number" id="hhTotalAUMDisplay" placeholder="Auto-calculated" readonly />
+          <span class="tip">= HH Advisory AUM + Additional Brokerage AUM</span>
         </div>
+        <div class="form-group">
+          <label>Account AUM ($)</label>
+          <input type="number" id="acctAUM" placeholder="Auto from investments"
+                 oninput="syncInput('acctAUM', this.value)" />
+          <span class="tip">Auto-sums investment amounts when rows are present</span>
+        </div>
+      </div>
+      <div class="form-row" id="manualFeeRow">
         <div class="form-group">
           <label>Actual Client Fee (bps)</label>
-          <input type="number" id="acFees" placeholder="e.g. 75" oninput="syncInput('acFees', this.value)" />
+          <input type="number" id="acFees" placeholder="e.g. 75"
+                 oninput="syncInput('acFees', this.value)" />
+          <span class="tip">Used only when no investment rows are present</span>
+        </div>
+        <div class="form-group">
+          <label>Manager Fee Add-On (bps)</label>
+          <input type="number" id="newmin" placeholder="e.g. 10"
+                 oninput="syncInput('newmin', this.value)" />
+          <span class="tip">Used only when no investment rows are present</span>
+        </div>
+        <div class="form-group">
+          <label class="toggle-check" style="margin-top:18px">
+            <input type="checkbox" id="isSMAFixed" onchange="syncCheck('isSMAFixed', this.checked)" />
+            <span>SMA Fixed Fee Schedule</span>
+          </label>
+          <span class="tip">Used only when no investment rows are present</span>
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Manager Fee Add-On (bps)</label>
-          <input type="number" id="newmin" placeholder="e.g. 10" oninput="syncInput('newmin', this.value)" />
+          <label>Net Revenue ($)</label>
+          <input type="number" id="netRevenue" placeholder="e.g. 1875"
+                 oninput="syncInput('netRevenue', this.value)" />
+          <span class="tip">Advisor's current net — manual input required</span>
         </div>
         <div class="form-group">
           <label>Gross Revenue ($)</label>
-          <input type="number" id="grossRevenue" placeholder="e.g. 3750" oninput="syncInput('grossRevenue', this.value)" />
+          <input type="number" id="grossRevenueDisplay" placeholder="Auto-calculated" readonly />
+          <span class="tip">= Client Fee (bps) × Account AUM ÷ 10,000</span>
         </div>
-        <div class="form-group">
-          <label>Net Revenue ($)</label>
-          <input type="number" id="netRevenue" placeholder="e.g. 1875" oninput="syncInput('netRevenue', this.value)" />
-        </div>
-      </div>
-      <div class="form-row" style="align-items:center">
-        <label class="toggle-check">
-          <input type="checkbox" id="isSMAFixed" onchange="syncCheck('isSMAFixed', this.checked)" />
-          <span>SMA Fixed Fee Schedule</span>
-        </label>
       </div>
       <div class="btn-row">
         <button class="btn btn-primary" onclick="calculate()">&#9654;&#65039; Calculate</button>
@@ -601,6 +673,11 @@
       <h2>&#127919; Calculation Results</h2>
     </div>
     <div class="card-body">
+      <!-- Summary strip (aggregate) -->
+      <div class="summary-strip" id="resultsSummary"></div>
+      <!-- Per-investment breakdown (shown when investments present) -->
+      <div id="perInvResults"></div>
+      <!-- Single-account results grid (shown in manual mode) -->
       <div class="results-grid" id="resultsGrid"></div>
     </div>
   </div>
@@ -717,33 +794,41 @@ const HOUSEHOLDS = [
 ];
 
 const STRATEGIES = [
-  { program:'SMA Fixed',        manager:'BlackRock',       strategy:'Core Equity',         minAUM:250000,  mgr:15, minFee:50, maxFee:100, grossMax:60 },
-  { program:'SMA Fixed',        manager:'Vanguard',        strategy:'Index Plus',          minAUM:100000,  mgr:8,  minFee:40, maxFee:85,  grossMax:50 },
-  { program:'Advisory Select',  manager:'PIMCO',           strategy:'Total Return',        minAUM:500000,  mgr:20, minFee:60, maxFee:120, grossMax:70 },
-  { program:'Advisory Select',  manager:'Fidelity',        strategy:'Contrafund SMA',      minAUM:250000,  mgr:18, minFee:55, maxFee:110, grossMax:65 },
-  { program:'Multi-Asset',      manager:'JP Morgan',       strategy:'Balanced Growth',     minAUM:500000,  mgr:25, minFee:65, maxFee:130, grossMax:75 },
-  { program:'Multi-Asset',      manager:'Morgan Stanley',  strategy:'Global Allocation',   minAUM:750000,  mgr:30, minFee:70, maxFee:140, grossMax:80 },
-  { program:'Unified Managed',  manager:'Goldman Sachs',   strategy:'UMA Core',            minAUM:1000000, mgr:22, minFee:70, maxFee:135, grossMax:78 },
-  { program:'Unified Managed',  manager:'Merrill Lynch',   strategy:'Custom UMA',          minAUM:750000,  mgr:20, minFee:65, maxFee:125, grossMax:72 },
-  { program:'SMA Fixed',        manager:'T. Rowe Price',   strategy:'Growth Stock',        minAUM:250000,  mgr:16, minFee:52, maxFee:105, grossMax:62 },
-  { program:'Advisory Select',  manager:'Schwab',          strategy:'Fundamental Select',  minAUM:100000,  mgr:10, minFee:45, maxFee:90,  grossMax:55 },
+  { program:'SMA Fixed',        manager:'BlackRock',      strategy:'Core Equity',        minAUM:250000,  mgr:15, minFee:50, maxFee:100, grossMax:60 },
+  { program:'SMA Fixed',        manager:'Vanguard',       strategy:'Index Plus',         minAUM:100000,  mgr:8,  minFee:40, maxFee:85,  grossMax:50 },
+  { program:'SMA Fixed',        manager:'T. Rowe Price',  strategy:'Growth Stock',       minAUM:250000,  mgr:16, minFee:52, maxFee:105, grossMax:62 },
+  { program:'Advisory Select',  manager:'PIMCO',          strategy:'Total Return',       minAUM:500000,  mgr:20, minFee:60, maxFee:120, grossMax:70 },
+  { program:'Advisory Select',  manager:'Fidelity',       strategy:'Contrafund SMA',     minAUM:250000,  mgr:18, minFee:55, maxFee:110, grossMax:65 },
+  { program:'Advisory Select',  manager:'Schwab',         strategy:'Fundamental Select', minAUM:100000,  mgr:10, minFee:45, maxFee:90,  grossMax:55 },
+  { program:'Multi-Asset',      manager:'JP Morgan',      strategy:'Balanced Growth',    minAUM:500000,  mgr:25, minFee:65, maxFee:130, grossMax:75 },
+  { program:'Multi-Asset',      manager:'Morgan Stanley', strategy:'Global Allocation',  minAUM:750000,  mgr:30, minFee:70, maxFee:140, grossMax:80 },
+  { program:'Unified Managed',  manager:'Goldman Sachs',  strategy:'UMA Core',           minAUM:1000000, mgr:22, minFee:70, maxFee:135, grossMax:78 },
+  { program:'Unified Managed',  manager:'Merrill Lynch',  strategy:'Custom UMA',         minAUM:750000,  mgr:20, minFee:65, maxFee:125, grossMax:72 },
 ];
 
 // ═══════════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════════
 
-let investments = [];
-let invIdCounter = 1;
-let selectedHH = null;
-let hhType = 'standard';
-let currentInvId = null;   // which row is picking a strategy
+let investments   = [];
+let invIdCounter  = 1;
+let selectedHH    = null;
+let hhType        = 'standard';
+let currentInvId  = null;
 let selectedStratIdx = null;
 
+// hhAdvAUM  = HH advisory AUM only (from household selection / manual)
+// brokAUM   = additional brokerage AUM (does NOT generate fees but counts toward threshold)
+// hhTotalAUM = hhAdvAUM + brokAUM  (used for: qualification threshold & HH overhead rate)
 const calcState = {
-  acctAUM: 0, hhAUMTotal: 0, acFees: 0,
-  newmin: 0, grossRevenue: 0, netRevenue: 0, isSMAFixed: false
+  hhAdvAUM: 0, brokAUM: 0,
+  // manual-mode overrides (used only when investments table is empty)
+  manualAcctAUM: 0, manualAcFees: 0, manualNewmin: 0, manualSMAFixed: false,
+  netRevenue: 0,
 };
+
+// ─── Derived ─────────────────────────────────────────────
+function hhTotalAUM() { return calcState.hhAdvAUM + calcState.brokAUM; }
 
 // ═══════════════════════════════════════════════════════
 //  NAVIGATION
@@ -760,7 +845,7 @@ function goBack() {
   document.getElementById('calculator').style.display = 'none';
   document.getElementById('resultsCard').style.display = 'none';
   investments = [];
-  selectedHH = null;
+  selectedHH  = null;
   resetCalc();
 }
 
@@ -768,7 +853,7 @@ function setHHType(type) {
   hhType = type;
   document.getElementById('toggleStd').classList.toggle('active', type === 'standard');
   document.getElementById('toggleGen').classList.toggle('active', type === 'generational');
-  document.getElementById('panelStandard').style.display    = type === 'standard'     ? '' : 'none';
+  document.getElementById('panelStandard').style.display     = type === 'standard'     ? '' : 'none';
   document.getElementById('panelGenerational').style.display = type === 'generational' ? '' : 'none';
 }
 
@@ -781,7 +866,10 @@ function filterHouseholds(val) {
   if (!val.trim()) { box.classList.remove('open'); return; }
   const lower = val.toLowerCase();
   const hits = HOUSEHOLDS.filter(h => h.name.toLowerCase().includes(lower));
-  if (!hits.length) { box.innerHTML='<div class="search-result-item">No results found</div>'; box.classList.add('open'); return; }
+  if (!hits.length) {
+    box.innerHTML = '<div class="search-result-item">No results found</div>';
+    box.classList.add('open'); return;
+  }
   box.innerHTML = hits.map(h => `
     <div class="search-result-item" onclick="selectHousehold(${h.id})">
       <span class="hh-name">${h.name}</span>
@@ -794,8 +882,10 @@ function selectHousehold(id) {
   selectedHH = HOUSEHOLDS.find(h => h.id === id);
   document.getElementById('hhSearch').value = selectedHH.name;
   document.getElementById('hhAUMDisplay').value = selectedHH.aum;
-  document.getElementById('hhAUMTotal').value = selectedHH.aum;
-  calcState.hhAUMTotal = selectedHH.aum;
+  // Populate the advisory AUM field in Calculation Inputs
+  calcState.hhAdvAUM = selectedHH.aum;
+  document.getElementById('hhAdvAUM').value = selectedHH.aum;
+  updateHHTotalDisplay();
   document.getElementById('hhSearchResults').classList.remove('open');
   document.getElementById('hhChip').innerHTML = `
     <div class="hh-chip">
@@ -806,18 +896,22 @@ function selectHousehold(id) {
 
 function clearHH() {
   selectedHH = null;
-  document.getElementById('hhSearch').value = '';
+  document.getElementById('hhSearch').value    = '';
   document.getElementById('hhAUMDisplay').value = '';
-  document.getElementById('hhAUMTotal').value = '';
-  calcState.hhAUMTotal = 0;
+  calcState.hhAdvAUM = 0;
+  document.getElementById('hhAdvAUM').value = '';
+  updateHHTotalDisplay();
   document.getElementById('hhChip').innerHTML = '';
 }
 
-// Close dropdown on outside click
+function updateHHTotalDisplay() {
+  const total = hhTotalAUM();
+  document.getElementById('hhTotalAUMDisplay').value = total || '';
+}
+
 document.addEventListener('click', e => {
-  if (!e.target.closest('.search-wrap')) {
+  if (!e.target.closest('.search-wrap'))
     document.querySelectorAll('.search-results').forEach(el => el.classList.remove('open'));
-  }
 });
 
 // ═══════════════════════════════════════════════════════
@@ -827,36 +921,55 @@ document.addEventListener('click', e => {
 function addInvestment() {
   investments.push({ id: invIdCounter++, name: '', amount: 0, strategy: null, clientFee: null });
   renderInvestments();
+  refreshDerivedCalcInputs();
 }
 
 function removeInvestment(id) {
   investments = investments.filter(i => i.id !== id);
   renderInvestments();
+  refreshDerivedCalcInputs();
 }
 
 function renderInvestments() {
   const tbody = document.getElementById('invTableBody');
   const empty = document.getElementById('invEmpty');
+
   if (!investments.length) {
     tbody.innerHTML = '';
     empty.style.display = 'block';
+    document.getElementById('investmentsDrivenNote').style.display = 'none';
+    document.getElementById('manualFeeRow').style.display = '';
     return;
   }
+
   empty.style.display = 'none';
+  document.getElementById('investmentsDrivenNote').style.display = '';
+  document.getElementById('manualFeeRow').style.display = 'none';
+
   tbody.innerHTML = investments.map(inv => {
     const stratLabel = inv.strategy
-      ? `<span class="btn-pick selected" onclick="openStratModal(${inv.id})">${inv.strategy.strategy}</span>`
+      ? `<button class="btn-pick selected" onclick="openStratModal(${inv.id})">${inv.strategy.strategy}<br><small style="font-weight:400;opacity:.85">${inv.strategy.program}</small></button>`
       : `<button class="btn-pick" onclick="openStratModal(${inv.id})">Pick Strategy</button>`;
-    const feeBadge = inv.clientFee !== null
-      ? `<span class="fee-set">${inv.clientFee} bps</span>`
-      : `<span class="fee-tbd">TBD</span>`;
-    const mgrFee = inv.strategy ? `${inv.strategy.mgr} bps` : '—';
+    const feeInput = `<div class="fee-input-wrap">
+      <input type="number" value="${inv.clientFee !== null ? inv.clientFee : ''}"
+             placeholder="${inv.clientFee === null ? 'TBD' : ''}"
+             step="0.01" min="0"
+             oninput="updateInv(${inv.id},'clientFee',parseFloat(this.value)||null); refreshDerivedCalcInputs()" />
+      <span class="bps-label">bps</span>
+    </div>`;
+    const mgrFee = inv.strategy ? inv.strategy.mgr : '—';
+    const grossRev = (inv.clientFee !== null && inv.amount)
+      ? fmt(Math.round(inv.clientFee * inv.amount / 10000))
+      : '—';
     return `<tr>
-      <td><input type="text" value="${inv.name}" placeholder="Account name" oninput="updateInv(${inv.id},'name',this.value)" /></td>
-      <td><input type="number" value="${inv.amount||''}" placeholder="$" oninput="updateInv(${inv.id},'amount',parseFloat(this.value)||0)" /></td>
+      <td><input type="text" value="${inv.name}" placeholder="Account name"
+           oninput="updateInv(${inv.id},'name',this.value)" /></td>
+      <td><input type="number" value="${inv.amount || ''}" placeholder="$" min="0"
+           oninput="updateInv(${inv.id},'amount',parseFloat(this.value)||0); refreshDerivedCalcInputs()" /></td>
       <td>${stratLabel}</td>
-      <td>${feeBadge}</td>
-      <td style="color:#555;font-size:12px">${mgrFee}</td>
+      <td>${feeInput}</td>
+      <td style="color:#555;font-size:12px;text-align:right">${mgrFee !== '—' ? mgrFee + ' bps' : '—'}</td>
+      <td style="font-size:12px;font-weight:600;color:#1a6b2a">${grossRev}</td>
       <td><button class="btn btn-danger" onclick="removeInvestment(${inv.id})">&#128465;</button></td>
     </tr>`;
   }).join('');
@@ -867,34 +980,47 @@ function updateInv(id, field, val) {
   if (inv) inv[field] = val;
 }
 
+// Auto-populate acctAUM and grossRevenue read-only display fields from investments
+function refreshDerivedCalcInputs() {
+  if (!investments.length) {
+    document.getElementById('acctAUM').value           = '';
+    document.getElementById('grossRevenueDisplay').value = '';
+    return;
+  }
+  const totalAUM = investments.reduce((s, i) => s + (i.amount || 0), 0);
+  const totalGross = investments.reduce((s, i) => {
+    if (i.clientFee !== null && i.amount) return s + (i.clientFee * i.amount / 10000);
+    return s;
+  }, 0);
+  document.getElementById('acctAUM').value            = totalAUM || '';
+  document.getElementById('grossRevenueDisplay').value = totalAUM ? totalGross.toFixed(2) : '';
+}
+
 // ═══════════════════════════════════════════════════════
 //  STRATEGY MODAL
 // ═══════════════════════════════════════════════════════
 
 function openStratModal(invId) {
-  currentInvId = invId;
+  currentInvId     = invId;
   selectedStratIdx = null;
-  document.getElementById('filterProgram').value = '';
-  document.getElementById('filterManager').value = '';
+  document.getElementById('filterProgram').value  = '';
+  document.getElementById('filterManager').value  = '';
   document.getElementById('filterStrategy').value = '';
   renderStratTable(STRATEGIES);
   document.getElementById('stratModal').classList.add('open');
 }
 
-function closeStratModal() {
-  document.getElementById('stratModal').classList.remove('open');
-}
+function closeStratModal() { document.getElementById('stratModal').classList.remove('open'); }
 
 function filterStrategies() {
-  const prog = document.getElementById('filterProgram').value.toLowerCase();
-  const mgr  = document.getElementById('filterManager').value.toLowerCase();
-  const strat= document.getElementById('filterStrategy').value.toLowerCase();
-  const filtered = STRATEGIES.filter(s =>
-    (!prog  || s.program.toLowerCase().includes(prog)) &&
-    (!mgr   || s.manager.toLowerCase().includes(mgr))  &&
+  const prog  = document.getElementById('filterProgram').value.toLowerCase();
+  const mgr   = document.getElementById('filterManager').value.toLowerCase();
+  const strat = document.getElementById('filterStrategy').value.toLowerCase();
+  renderStratTable(STRATEGIES.filter(s =>
+    (!prog  || s.program.toLowerCase().includes(prog))   &&
+    (!mgr   || s.manager.toLowerCase().includes(mgr))    &&
     (!strat || s.strategy.toLowerCase().includes(strat))
-  );
-  renderStratTable(filtered);
+  ));
 }
 
 function renderStratTable(data) {
@@ -910,8 +1036,7 @@ function renderStratTable(data) {
       <td>${s.maxFee}</td>
       <td>${s.grossMax}</td>
     </tr>`).join('');
-  // store filtered ref for confirm
-  document.getElementById('stratTableBody')._data = data;
+  tbody._data = data;
 }
 
 function selectStratRow(i, tr) {
@@ -922,17 +1047,15 @@ function selectStratRow(i, tr) {
 
 function confirmStrategy() {
   if (selectedStratIdx === null) { alert('Please select a strategy row.'); return; }
-  const data = document.getElementById('stratTableBody')._data || STRATEGIES;
+  const data  = document.getElementById('stratTableBody')._data || STRATEGIES;
   const strat = data[selectedStratIdx];
-  const inv = investments.find(i => i.id === currentInvId);
+  const inv   = investments.find(i => i.id === currentInvId);
   if (inv) {
-    inv.strategy = strat;
-    inv.clientFee = strat.minFee;   // default to min fee; advisor can adjust
-    // update calc inputs
-    calcState.newmin = strat.mgr;
-    document.getElementById('newmin').value = strat.mgr;
+    inv.strategy  = strat;
+    inv.clientFee = strat.minFee;   // default to strategy minimum; advisor can override
   }
   renderInvestments();
+  refreshDerivedCalcInputs();
   closeStratModal();
 }
 
@@ -942,28 +1065,33 @@ function confirmStrategy() {
 
 function openCreateHHModal()  { document.getElementById('createHHModal').classList.add('open'); }
 function closeCreateHHModal() { document.getElementById('createHHModal').classList.remove('open'); }
+function addGenMember()       { alert('In the full Salesforce app this opens a household search to add a member to the generational group.'); }
 
 // ═══════════════════════════════════════════════════════
-//  GENERATIONAL PLACEHOLDER
+//  INPUT SYNC (manual fields)
 // ═══════════════════════════════════════════════════════
 
-function addGenMember() {
-  alert('In the full Salesforce app, this opens a household search to add a member to the generational group.');
+function syncInput(field, val) {
+  const n = parseFloat(val) || 0;
+  if      (field === 'hhAdvAUM')    { calcState.hhAdvAUM    = n; updateHHTotalDisplay(); }
+  else if (field === 'brokAUM')     { calcState.brokAUM     = n; updateHHTotalDisplay(); }
+  else if (field === 'acctAUM')     { calcState.manualAcctAUM  = n; }
+  else if (field === 'acFees')      { calcState.manualAcFees   = n; }
+  else if (field === 'newmin')      { calcState.manualNewmin   = n; }
+  else if (field === 'netRevenue')  { calcState.netRevenue     = n; }
 }
+function syncCheck(field, val) {
+  if (field === 'isSMAFixed') calcState.manualSMAFixed = val;
+}
+function updateCalcInput(f, v) { syncInput(f, v); }
 
 // ═══════════════════════════════════════════════════════
-//  CALC INPUT SYNC
+//  FEE TIER HELPERS  (exact SQL Section 1 tiers)
 // ═══════════════════════════════════════════════════════
 
-function syncInput(field, val)  { calcState[field] = parseFloat(val) || 0; }
-function syncCheck(field, val)  { calcState[field] = val; }
-function updateCalcInput(f, v)  { syncInput(f, v); }
-
-// ═══════════════════════════════════════════════════════
-//  FEE HELPERS (mirrors LWC)
-// ═══════════════════════════════════════════════════════
-
+// SMAFixedFeeNoDiscounts tier
 function smaFixedFee(a) {
+  a = a || 0;
   if (a < 250000)  return a * 75 / 10000;
   if (a < 1000000) return 1875  + (a - 250000)  * 60 / 10000;
   if (a < 2000000) return 6375  + (a - 1000000) * 50 / 10000;
@@ -971,7 +1099,10 @@ function smaFixedFee(a) {
   if (a < 7000000) return 19375 + (a - 4000000) * 30 / 10000;
   return 28375 + (a - 7000000) * 25 / 10000;
 }
+
+// AdvFeeNoDiscounts tier
 function advFee(a) {
+  a = a || 0;
   if (a < 250000)  return a * 100 / 10000;
   if (a < 1000000) return 2500  + (a - 250000)  * 80 / 10000;
   if (a < 2000000) return 8500  + (a - 1000000) * 60 / 10000;
@@ -979,7 +1110,10 @@ function advFee(a) {
   if (a < 7000000) return 22500 + (a - 4000000) * 30 / 10000;
   return 31500 + (a - 7000000) * 25 / 10000;
 }
+
+// OverheadNoDiscounts tier
 function overheadFee(a) {
+  a = a || 0;
   if (a < 250000)  return a * 38 / 10000;
   if (a < 1000000) return 950  + (a - 250000)  * 31 / 10000;
   if (a < 2000000) return 3275 + (a - 1000000) * 23 / 10000;
@@ -989,86 +1123,321 @@ function overheadFee(a) {
 }
 
 // ═══════════════════════════════════════════════════════
-//  CALCULATE
+//  CORE CALCULATION ENGINE
+//
+//  Mirrors SQL Sections 1-3 exactly.
+//
+//  Parameters:
+//    acctAUM    – this account's AUM              (SQL: G.AUM)
+//    hhAdvAUM   – HH advisory-only AUM            (SQL: D.HHAdvAUMTotal)
+//    hhTotAUM   – HH advisory + brokerage AUM     (SQL: D.HHAUMTotal)
+//    acFees     – actual client fee in bps        (SQL: ACfees)
+//    newmin     – manager fee add-on in bps       (SQL: newmin)
+//    isSMAFixed – true if account is SMA Fixed    (SQL: F.acctnum IS NOT NULL)
+//    grossRev   – gross revenue $                 (SQL: GrossRevenue)
+//    netRev     – net revenue $                   (SQL: NetRevenue)
+//
+//  Returns an object with every intermediate + final value.
+// ═══════════════════════════════════════════════════════
+
+function runCalc(acctAUM, hhAdvAUM, hhTotAUM, acFees, newmin, isSMAFixed, grossRev, netRev) {
+
+  // ── Section 1: HH-level fee schedules (no discounts) ──────────────────
+  // These are computed at HH level using hhAdvAUM (advisory accounts only).
+  const smaFixedFeeNoDisc = smaFixedFee(hhAdvAUM);   // SMAFixedFeeNoDiscounts
+  const advFeeNoDisc      = advFee(hhAdvAUM);          // AdvFeeNoDiscounts
+  // OverheadNoDiscounts – per-ACCOUNT overhead (used in MinWithHH formula);
+  // in the SQL this comes from a per-account join (E.OverheadNoDiscounts).
+  const overheadNoDiscAcct = overheadFee(acctAUM);
+
+  // ── Section 2a: AcctMinBPNoHHDiscounts ────────────────────────────────
+  // Per-account standalone minimum in bps; uses SMA or Advisory schedule
+  // based on whether the account is in the SMAFixed programme.
+  const acctMinDollar = isSMAFixed ? smaFixedFee(acctAUM) : advFee(acctAUM);
+  // Divide by account AUM (CASE WHEN G.AUM = 0 THEN 1 ELSE G.AUM END)
+  const acctMinBP = (acctMinDollar / (acctAUM || 1)) * 10000;
+
+  // ── Section 2b: MinWithHHdiscounts ───────────────────────────────────
+  // HH-level base fee rate (bps) using HH advisory AUM as denominator.
+  const hhBaseFee = isSMAFixed ? smaFixedFeeNoDisc : advFeeNoDisc;
+  const hhBaseBP  = (hhBaseFee / (hhAdvAUM || 1)) * 10000;
+
+  // Per-account overhead rate expressed against HH advisory AUM
+  //   = E.OverheadNoDiscounts / HHAdvAUMTotal * 10000
+  const acctOverheadBP = (overheadNoDiscAcct / (hhAdvAUM || 1)) * 10000;
+
+  // HH-blended overhead rate using TOTAL HH AUM (advisory + brokerage)
+  //   = overheadFee(HHAUMTotal) / HHAUMTotal * 10000
+  const hhOverheadBP = (overheadFee(hhTotAUM) / (hhTotAUM || 1)) * 10000;
+
+  // MinWithHHdiscounts = hhBaseBP – (acctOverheadBP – hhOverheadBP)
+  const minWithHH = hhBaseBP - (acctOverheadBP - hhOverheadBP);
+
+  // ── Section 3: Participation & pay rate ──────────────────────────────
+  // Qualification uses TOTAL HH AUM (advisory + brokerage) per SQL:
+  //   CASE WHEN hh.HHAUMTotal >= 1000000 THEN 'Y' ELSE 'N'
+  const qualifies = hhTotAUM >= 1000000;
+
+  // Participation gap at each level (clamped to 0 if client fee exceeds minimum)
+  const estPartAcct = Math.max(0, acctMinBP + newmin - acFees);
+  const estPartHH   = Math.max(0, minWithHH  + newmin - acFees);
+
+  // Which minimum / gap applies?
+  const participationMinFee = qualifies ? minWithHH  : acctMinBP;
+  const estParticipation    = qualifies ? estPartHH  : estPartAcct;
+
+  // Pay rate per SQL CASE logic (exactly as written):
+  //   HH + gap > 50  → 0
+  //   non-HH + gap > 50 → 0
+  //   HH             → 0.5 – (gap / 100)
+  //   else           → 0.5 – (gap / 100)
+  // (all four branches collapse to: 0 if gap>50, else 0.5 – gap/100)
+  let payRate;
+  if (qualifies  && estPartHH   > 50) payRate = 0;
+  else if (!qualifies && estPartAcct > 50) payRate = 0;
+  else if (qualifies)  payRate = 0.5 - (estPartHH   / 100);
+  else                 payRate = 0.5 - (estPartAcct  / 100);
+
+  // Gross revenue: auto-calculated as acFees * acctAUM / 10000
+  const grossRevenue = grossRev !== null ? grossRev : (acFees * acctAUM / 10000);
+
+  // ChangeinNet = ROUND((ParticipationPayRate * GrossRevenue) – NetRevenue, 2)
+  const changeInNet = Math.round((payRate * grossRevenue - netRev) * 100) / 100;
+
+  return {
+    // Intermediates (useful for display / audit trail)
+    smaFixedFeeNoDisc, advFeeNoDisc, overheadNoDiscAcct,
+    acctMinBP, hhBaseBP, acctOverheadBP, hhOverheadBP, minWithHH,
+    // Final outputs
+    qualifies,
+    estPartAcct, estPartHH,
+    participationMinFee,
+    estParticipation,
+    payRate,
+    grossRevenue,
+    changeInNet,
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+//  CALCULATE (called by button)
 // ═══════════════════════════════════════════════════════
 
 function calculate() {
-  const { acctAUM, hhAUMTotal, acFees, newmin, grossRevenue, netRevenue, isSMAFixed } = calcState;
+  const hhAdvAUM = calcState.hhAdvAUM;
+  const hhTotAUM = hhTotalAUM();
+  const netRev   = calcState.netRevenue;
 
-  if (!acctAUM) { alert('Please enter Account AUM.'); return; }
-  if (!hhAUMTotal) { alert('Please enter HH Advisory AUM Total.'); return; }
+  if (!hhAdvAUM) { alert('Please enter (or select) a Household Advisory AUM.'); return; }
 
-  const hhAUM = hhAUMTotal;
+  // ── Investment-driven mode ──────────────────────────────────────────
+  if (investments.length) {
+    const hasAmounts = investments.some(i => i.amount > 0);
+    if (!hasAmounts) { alert('Please enter investment amounts.'); return; }
 
-  const overhead_Acct = overheadFee(acctAUM);
-  const hhBaseFee     = isSMAFixed ? smaFixedFee(hhAUM) : advFee(hhAUM);
-  const hhBaseBP      = (hhBaseFee / (hhAUM||1)) * 10000;
+    const perInvResults = investments.map(inv => {
+      const acctAUM  = inv.amount || 0;
+      const acFees   = inv.clientFee !== null ? inv.clientFee : 0;
+      const newmin   = inv.strategy ? inv.strategy.mgr : 0;
+      const isSMA    = inv.strategy ? inv.strategy.program === 'SMA Fixed' : false;
+      const grossRev = (acFees * acctAUM) / 10000;
+      return { inv, r: runCalc(acctAUM, hhAdvAUM, hhTotAUM, acFees, newmin, isSMA, grossRev, netRev) };
+    });
 
-  const acctMinDollar = isSMAFixed ? smaFixedFee(acctAUM) : advFee(acctAUM);
-  const acctMinBP     = (acctMinDollar / (acctAUM||1)) * 10000;
+    renderPerInvResults(perInvResults, hhTotAUM, netRev);
+    document.getElementById('resultsGrid').innerHTML = '';
 
-  const acctOverheadBP = (overhead_Acct / (hhAUM||1)) * 10000;
-  const hhOverheadBP   = (overheadFee(hhAUM) / (hhAUM||1)) * 10000;
-  const overheadDelta  = acctOverheadBP - hhOverheadBP;
-  const minWithHH      = hhBaseBP - overheadDelta;
+  // ── Manual mode ─────────────────────────────────────────────────────
+  } else {
+    const acctAUM  = calcState.manualAcctAUM;
+    const acFees   = calcState.manualAcFees;
+    const newmin   = calcState.manualNewmin;
+    const isSMA    = calcState.manualSMAFixed;
+    if (!acctAUM) { alert('Please enter Account AUM.'); return; }
+    const grossRev = acFees * acctAUM / 10000;
+    document.getElementById('grossRevenueDisplay').value = grossRev.toFixed(2);
 
-  const qualifies = hhAUM >= 1000000;
+    const r = runCalc(acctAUM, hhAdvAUM, hhTotAUM, acFees, newmin, isSMA, grossRev, netRev);
 
-  const partAcct = Math.max(0, acctMinBP + newmin - acFees);
-  const partHH   = Math.max(0, minWithHH  + newmin - acFees);
+    // Summary strip
+    const summary = document.getElementById('resultsSummary');
+    summary.innerHTML = `
+      <div class="s-item"><div class="s-label">Account AUM</div><div class="s-value">${fmt(acctAUM)}</div></div>
+      <div class="s-item"><div class="s-label">HH Advisory AUM</div><div class="s-value">${fmt(hhAdvAUM)}</div></div>
+      <div class="s-item"><div class="s-label">HH Total AUM</div><div class="s-value">${fmt(hhTotAUM)}</div></div>
+      <div class="s-item"><div class="s-label">HH Discount</div><div class="s-value">${r.qualifies ? 'Qualifies ✓' : 'No discount'}</div></div>
+      <div class="s-item"><div class="s-label">Gross Revenue</div><div class="s-value">${fmt(Math.round(r.grossRevenue))}</div></div>`;
 
-  const participationMinFee = qualifies ? minWithHH   : acctMinBP;
-  const estParticipation    = qualifies ? partHH      : partAcct;
-  const participationGap    = qualifies ? partHH      : partAcct;
+    document.getElementById('perInvResults').innerHTML = '';
+    const grid = document.getElementById('resultsGrid');
+    grid.innerHTML = buildResultCards(r);
+  }
 
-  let payRate;
-  if (participationGap > 50)      payRate = 0;
-  else if (participationGap <= 0) payRate = 0.5;
-  else payRate = 0.5 - (participationGap / 100);
-
-  const changeInNet = Math.round(((payRate * grossRevenue) - netRevenue) * 100) / 100;
-
-  const results = [
-    { label: 'Qualifies for HH Discount', value: qualifies ? 'Yes' : 'No',
-      cls: qualifies ? 'result-ok' : 'result-warn' },
-    { label: 'Acct Min (No HH Discount)', value: acctMinBP.toFixed(2) + ' bps',         cls: '' },
-    { label: 'Min With HH Discounts',     value: minWithHH.toFixed(2)  + ' bps',         cls: '' },
-    { label: 'Participation Minimum Fee', value: participationMinFee.toFixed(2) + ' bps',cls: '' },
-    { label: 'Estimated Participation',   value: estParticipation.toFixed(2) + ' bps',
-      cls: estParticipation > 0 ? 'result-warn' : 'result-ok' },
-    { label: 'Participation Pay Rate',    value: (payRate*100).toFixed(1) + '%',
-      cls: payRate === 0 ? 'result-bad' : 'result-ok' },
-    { label: 'Change in Net',             value: '$' + changeInNet.toLocaleString('en-US',{minimumFractionDigits:2}),
-      cls: changeInNet < 0 ? 'result-bad' : 'result-ok' },
-  ];
-
-  const grid = document.getElementById('resultsGrid');
-  grid.innerHTML = results.map(r => `
-    <div class="result-item ${r.cls}">
-      <div class="result-label">${r.label}</div>
-      <div class="result-value">${r.value}</div>
-    </div>`).join('');
   document.getElementById('resultsCard').style.display = '';
   document.getElementById('resultsCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+// ── Per-investment results table ────────────────────────────────────────
+
+function renderPerInvResults(rows, hhTotAUM, netRev) {
+  const qualifies = hhTotAUM >= 1000000;
+
+  // Aggregate totals
+  const totalAUM   = rows.reduce((s, x) => s + (x.inv.amount || 0), 0);
+  const totalGross = rows.reduce((s, x) => s + x.r.grossRevenue, 0);
+  const totalNet   = rows.reduce((s, x) => s + x.r.changeInNet, 0);
+
+  // Summary strip
+  const hhAdvAUM = calcState.hhAdvAUM;
+  document.getElementById('resultsSummary').innerHTML = `
+    <div class="s-item"><div class="s-label">Total Investment AUM</div><div class="s-value">${fmt(Math.round(totalAUM))}</div></div>
+    <div class="s-item"><div class="s-label">HH Advisory AUM</div><div class="s-value">${fmt(hhAdvAUM)}</div></div>
+    <div class="s-item"><div class="s-label">HH Total AUM</div><div class="s-value">${fmt(hhTotAUM)}</div></div>
+    <div class="s-item"><div class="s-label">HH Discount</div><div class="s-value">${qualifies ? 'Qualifies ✓' : 'No discount'}</div></div>
+    <div class="s-item"><div class="s-label">Total Gross Revenue</div><div class="s-value">${fmt(Math.round(totalGross))}</div></div>
+    <div class="s-item"><div class="s-label">Net Revenue Input</div><div class="s-value">${fmt(netRev)}</div></div>`;
+
+  // Per-investment breakdown table
+  document.getElementById('perInvResults').innerHTML = `
+    <div style="overflow-x:auto">
+    <table class="inv-results-table">
+      <thead><tr>
+        <th>Investment</th>
+        <th>AUM</th>
+        <th>Program</th>
+        <th>Client Fee</th>
+        <th>Mgr Fee</th>
+        <th>Gross Rev</th>
+        <th>Acct Min (no HH)</th>
+        <th>Min w/ HH Disc</th>
+        <th>Part. Min Fee</th>
+        <th>Est. Participation</th>
+        <th>Pay Rate</th>
+        <th>Change in Net</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(({ inv, r }) => {
+          const partCls  = r.estParticipation > 0  ? 'val-warn' : 'val-ok';
+          const rateCls  = r.payRate === 0          ? 'val-bad'  : 'val-ok';
+          const netCls   = r.changeInNet < 0        ? 'val-bad'  : 'val-ok';
+          const program  = inv.strategy ? inv.strategy.program : '—';
+          return `<tr>
+            <td><strong>${inv.name || '(unnamed)'}</strong></td>
+            <td class="val-neutral">${fmt(inv.amount || 0)}</td>
+            <td>${program}</td>
+            <td>${inv.clientFee !== null ? inv.clientFee + ' bps' : '<span class="fee-tbd">TBD</span>'}</td>
+            <td>${inv.strategy ? inv.strategy.mgr + ' bps' : '—'}</td>
+            <td>${fmt(Math.round(r.grossRevenue))}</td>
+            <td>${r.acctMinBP.toFixed(2)} bps</td>
+            <td>${r.minWithHH.toFixed(2)} bps</td>
+            <td>${r.participationMinFee.toFixed(2)} bps</td>
+            <td class="${partCls}">${r.estParticipation.toFixed(2)} bps</td>
+            <td class="${rateCls}">${(r.payRate * 100).toFixed(1)}%</td>
+            <td class="${netCls}">$${r.changeInNet.toLocaleString('en-US',{minimumFractionDigits:2})}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+    <!-- Intermediates toggle -->
+    <div style="margin-top:12px">
+      <button class="btn btn-secondary btn-sm" onclick="toggleIntermediates(this)">&#128270; Show Intermediates</button>
+      <div id="intermediatesPanel" style="display:none; margin-top:12px; overflow-x:auto">
+        <table class="inv-results-table">
+          <thead><tr>
+            <th>Investment</th>
+            <th>SMAFixed Fee$ (HH)</th>
+            <th>Adv Fee$ (HH)</th>
+            <th>Overhead$ (Acct)</th>
+            <th>HH Base Rate (bps)</th>
+            <th>Acct Overhead / HH Adv AUM</th>
+            <th>HH Overhead / HH Tot AUM</th>
+            <th>Overhead Delta</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(({ inv, r }) => `<tr>
+              <td><strong>${inv.name || '(unnamed)'}</strong></td>
+              <td>${fmt(Math.round(r.smaFixedFeeNoDisc))}</td>
+              <td>${fmt(Math.round(r.advFeeNoDisc))}</td>
+              <td>${fmt(Math.round(r.overheadNoDiscAcct))}</td>
+              <td>${r.hhBaseBP.toFixed(3)} bps</td>
+              <td>${r.acctOverheadBP.toFixed(3)} bps</td>
+              <td>${r.hhOverheadBP.toFixed(3)} bps</td>
+              <td>${(r.acctOverheadBP - r.hhOverheadBP).toFixed(3)} bps</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function toggleIntermediates(btn) {
+  const panel = document.getElementById('intermediatesPanel');
+  const shown = panel.style.display !== 'none';
+  panel.style.display = shown ? 'none' : '';
+  btn.textContent = shown ? '🔍 Show Intermediates' : '🔍 Hide Intermediates';
+}
+
+// ── Single-account result cards (manual mode) ───────────────────────────
+
+function buildResultCards(r) {
+  const items = [
+    { label: 'Qualifies for HH Discount',
+      value: r.qualifies ? 'Yes' : 'No',
+      cls:   r.qualifies ? 'result-ok' : 'result-warn' },
+    { label: 'Acct Min BP (No HH Discount)',
+      value: r.acctMinBP.toFixed(2) + ' bps', cls: '' },
+    { label: 'Min With HH Discounts',
+      value: r.minWithHH.toFixed(2) + ' bps',  cls: '' },
+    { label: 'Participation Minimum Fee',
+      value: r.participationMinFee.toFixed(2) + ' bps', cls: '' },
+    { label: 'Est. Participation (Acct Level)',
+      value: r.estPartAcct.toFixed(2) + ' bps',
+      cls:   r.estPartAcct > 0 ? 'result-warn' : 'result-ok' },
+    { label: 'Est. Participation (HH Level)',
+      value: r.estPartHH.toFixed(2) + ' bps',
+      cls:   r.estPartHH > 0 ? 'result-warn' : 'result-ok' },
+    { label: 'Estimated Participation (Applied)',
+      value: r.estParticipation.toFixed(2) + ' bps',
+      cls:   r.estParticipation > 0 ? 'result-warn' : 'result-ok' },
+    { label: 'Participation Pay Rate',
+      value: (r.payRate * 100).toFixed(1) + '%',
+      cls:   r.payRate === 0 ? 'result-bad' : 'result-ok' },
+    { label: 'Gross Revenue',
+      value: '$' + r.grossRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 }), cls: '' },
+    { label: 'Change in Net',
+      value: '$' + r.changeInNet.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+      cls:   r.changeInNet < 0 ? 'result-bad' : 'result-ok' },
+  ];
+  return items.map(i => `
+    <div class="result-item ${i.cls}">
+      <div class="result-label">${i.label}</div>
+      <div class="result-value">${i.value}</div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  RESET
+// ═══════════════════════════════════════════════════════
+
 function resetCalc() {
-  ['acctAUM','hhAUMTotal','acFees','newmin','grossRevenue','netRevenue'].forEach(id => {
+  ['hhAdvAUM','acctAUM','acFees','newmin','netRevenue','hhTotalAUMDisplay','grossRevenueDisplay'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
   document.getElementById('isSMAFixed').checked = false;
-  Object.assign(calcState, { acctAUM:0, hhAUMTotal:0, acFees:0, newmin:0, grossRevenue:0, netRevenue:0, isSMAFixed:false });
+  Object.assign(calcState, { hhAdvAUM:0, brokAUM:0, manualAcctAUM:0, manualAcFees:0, manualNewmin:0, manualSMAFixed:false, netRevenue:0 });
+  document.getElementById('brokAUM').value = '';
   document.getElementById('resultsCard').style.display = 'none';
+  document.getElementById('investmentsDrivenNote').style.display = 'none';
+  document.getElementById('manualFeeRow').style.display = '';
 }
 
 // ═══════════════════════════════════════════════════════
 //  UTILS
 // ═══════════════════════════════════════════════════════
 
-function fmt(n) {
-  return '$' + Number(n).toLocaleString('en-US');
-}
+function fmt(n) { return '$' + Number(n).toLocaleString('en-US'); }
 </script>
 </body>
 </html>
