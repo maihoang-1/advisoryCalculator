@@ -36,7 +36,7 @@ body {
   font-size: 15px;
   font-weight: 900;
 }
-.page { max-width: 860px; margin: 1.5rem auto; padding: 0 1rem 4rem; }
+.page { max-width: 1140px; margin: 1.5rem auto; padding: 0 1.5rem 4rem; }
 
 /* ── Card ── */
 .card {
@@ -111,18 +111,28 @@ body {
   background: #fff; border: 1px solid #dddbda;
   border-top: none; border-radius: 0 0 4px 4px;
   z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,.15);
-  display: none; max-height: 220px; overflow-y: auto;
+  display: none; max-height: 280px; overflow-y: auto;
 }
 .search-dropdown.open { display: block; }
+.dd-footer {
+  padding: 8px 12px; border-top: 1px solid #e8e8e8;
+  background: #f8f9fb; display: flex; justify-content: flex-end; gap: 8px;
+  position: sticky; bottom: 0;
+}
 .dd-item {
   padding: 9px 12px; cursor: pointer;
   border-bottom: 1px solid #f3f2f2;
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; align-items: center; gap: 10px;
   transition: background 0.1s;
 }
 .dd-item:last-child { border-bottom: none; }
 .dd-item:hover { background: #f0f7ff; }
-.dd-item.already { background: #f3f2f2; cursor: default; color: #706e6b; }
+.dd-item.checked-row { background: #eaf3ff; }
+.dd-item input[type=checkbox] {
+  width: 16px; height: 16px; accent-color: #0070d2;
+  cursor: pointer; flex-shrink: 0;
+}
+.dd-item-info { flex: 1; }
 .dd-name { font-weight: 600; font-size: 0.8125rem; }
 .dd-aum  { font-size: 0.75rem; color: #54698d; }
 
@@ -324,14 +334,14 @@ const app = {
 
   // Generational
   gen: {
-    hhName: '',            // name for the new generational household
+    hhName: '',
     searchVal: '',
-    selected: [],          // array of household objects
+    pendingIds: new Set(), // checked but not yet added from dropdown
+    selected: [],
     attested: false,
     created: false,
-    // lookup mode
     lookupVal: '',
-    viewingId: null,       // id of a saved household being viewed
+    viewingId: null,
   },
 };
 
@@ -711,20 +721,36 @@ function renderGenerational() {
         <input type="text"
                id="genSearch"
                value="${escHtml(g.searchVal)}"
-               placeholder="Search household name…"
+               placeholder="Search by last name, e.g. Smith…"
                autocomplete="off"
                oninput="genSearchInput(this.value)" />
         <div class="search-dropdown ${mQuery ? 'open' : ''}" id="genDropdown">
           ${mQuery
             ? mMatches.length
-              ? mMatches.map(h=>`
-                <div class="dd-item" onclick="genSelectHH(${h.id})">
-                  <div>
-                    <div class="dd-name">${escHtml(h.name)}</div>
-                    <div class="dd-aum">${fmtUSD(h.aum)} advisory AUM</div>
-                  </div>
-                  <button class="btn btn-brand" style="height:26px;padding:0 10px;font-size:.75rem">Add</button>
-                </div>`).join('')
+              ? `${mMatches.map(h => {
+                  const checked = g.pendingIds.has(h.id);
+                  return `<div class="dd-item ${checked?'checked-row':''}"
+                               onclick="genTogglePending(${h.id},event)">
+                    <input type="checkbox" ${checked?'checked':''}
+                           onclick="event.stopPropagation()"
+                           onchange="genTogglePending(${h.id},event)" />
+                    <div class="dd-item-info">
+                      <div class="dd-name">${escHtml(h.name)}</div>
+                      <div class="dd-aum">${fmtUSD(h.aum)} advisory AUM</div>
+                    </div>
+                  </div>`;
+                }).join('')}
+                <div class="dd-footer">
+                  <span style="font-size:.75rem;color:#54698d;align-self:center">
+                    ${g.pendingIds.size} selected
+                  </span>
+                  <button class="btn btn-neutral" style="height:28px;font-size:.75rem"
+                          onclick="genClearPending()">Clear</button>
+                  <button class="btn btn-brand" style="height:28px;font-size:.75rem"
+                          onclick="genAddPending()" ${g.pendingIds.size===0?'disabled':''}>
+                    Add Selected
+                  </button>
+                </div>`
               : `<div class="dd-item" style="color:#706e6b;cursor:default">No households found</div>`
             : ''}
         </div>
@@ -807,6 +833,7 @@ function renderGenerational() {
 
 function genSearchInput(val) {
   app.gen.searchVal = val;
+  if (!val.trim()) app.gen.pendingIds = new Set();
   render();
   const el = document.getElementById('genSearch');
   if (el) { el.focus(); el.setSelectionRange(val.length, val.length); }
@@ -819,11 +846,34 @@ function genLookupInput(val) {
   if (el) { el.focus(); el.setSelectionRange(val.length, val.length); }
 }
 
-function genSelectHH(id) {
-  const hh = HOUSEHOLDS.find(h=>h.id===id);
-  if (hh && !app.gen.selected.find(h=>h.id===id)) app.gen.selected.push(hh);
-  app.gen.searchVal = '';
+function genTogglePending(id, e) {
+  if (e) e.stopPropagation();
+  const p = app.gen.pendingIds;
+  p.has(id) ? p.delete(id) : p.add(id);
   render();
+  const el = document.getElementById('genSearch');
+  if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+}
+
+function genAddPending() {
+  const g = app.gen;
+  const selectedIds = new Set(g.selected.map(h=>h.id));
+  g.pendingIds.forEach(id => {
+    if (!selectedIds.has(id)) {
+      const hh = HOUSEHOLDS.find(h=>h.id===id);
+      if (hh) g.selected.push(hh);
+    }
+  });
+  g.pendingIds = new Set();
+  g.searchVal = '';
+  render();
+}
+
+function genClearPending() {
+  app.gen.pendingIds = new Set();
+  render();
+  const el = document.getElementById('genSearch');
+  if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
 }
 
 function genRemoveHH(id) {
@@ -856,7 +906,7 @@ function genDeleteSaved(id) {
 }
 
 function genReset() {
-  app.gen = { hhName:'', searchVal:'', selected:[], attested:false, created:false, lookupVal:'', viewingId:null };
+  app.gen = { hhName:'', searchVal:'', pendingIds:new Set(), selected:[], attested:false, created:false, lookupVal:'', viewingId:null };
   render();
 }
 
