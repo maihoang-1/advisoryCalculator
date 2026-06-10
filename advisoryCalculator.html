@@ -1,970 +1,638 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Advisory Pricing Calculator</title>
 <style>
-  /* ── Reset & Base ── */
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after { box-sizing: border-box; }
+
   body {
     font-family: 'Salesforce Sans', Arial, sans-serif;
     background: #f3f2f2;
-    color: #181818;
-    min-height: 100vh;
+    margin: 0;
+    padding: 24px;
+    color: #16325c;
   }
 
-  /* ── Header ── */
-  .app-header {
-    background: #0176d3;
-    color: #fff;
-    padding: 0 24px;
-    height: 52px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    box-shadow: 0 2px 4px rgba(0,0,0,.2);
-  }
-  .app-header .logo { font-size: 22px; font-weight: 700; letter-spacing: .5px; }
-  .app-header .subtitle { font-size: 13px; opacity: .85; }
-
-  /* ── Page shell ── */
-  .page { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
-
-  /* ── Cards ── */
   .card {
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0,0,0,.12);
-    margin-bottom: 20px;
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+    max-width: 1300px;
+    margin: 0 auto;
+    overflow: hidden;
   }
+
   .card-header {
+    background: #0070d2;
+    color: white;
     padding: 14px 20px;
-    border-bottom: 1px solid #e5e5e5;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .card-body { padding: 24px; }
+
+  /* ── Context dropdown inside search bar ── */
+  .search-bar-wrap {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid #dddbda;
+    border-radius: 4px;
+    overflow: visible;
+    flex: 2;
+    min-width: 260px;
+    position: relative;
+  }
+  .ctx-select-wrap {
     display: flex;
     align-items: center;
-    gap: 10px;
+    background: #f4f6f9;
+    border-right: 1px solid #dddbda;
+    flex-shrink: 0;
   }
-  .card-header h2 { font-size: 15px; font-weight: 600; color: #0176d3; }
-  .card-body { padding: 20px; }
-
-  /* ── Toggle ── */
-  .toggle-bar {
-    display: flex;
-    background: #f3f2f2;
-    border-radius: 6px;
-    padding: 4px;
-    gap: 4px;
-    width: fit-content;
-    margin-bottom: 24px;
-  }
-  .toggle-btn {
-    padding: 8px 28px;
+  .ctx-select {
+    appearance: none;
+    -webkit-appearance: none;
     border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
     background: transparent;
-    color: #444;
-    transition: all .18s;
-  }
-  .toggle-btn.active {
-    background: #0176d3;
-    color: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,.18);
-  }
-
-  /* ── Form layout ── */
-  .form-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
-  .form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 180px; }
-  .form-group label { font-size: 12px; font-weight: 600; color: #444; text-transform: uppercase; letter-spacing: .4px; }
-  .form-group input, .form-group select {
-    height: 36px;
-    border: 1px solid #c9c9c9;
-    border-radius: 4px;
-    padding: 0 10px;
-    font-size: 13px;
-    color: #181818;
-    background: #fff;
-    transition: border-color .15s;
-    width: 100%;
-  }
-  .form-group input:focus, .form-group select:focus {
-    outline: none;
-    border-color: #0176d3;
-    box-shadow: 0 0 0 2px rgba(1,118,211,.15);
-  }
-  .form-group input[readonly] { background: #f9f9f9; color: #666; }
-
-  /* Search bar */
-  .search-wrap { position: relative; }
-  .search-wrap input { padding-left: 32px; }
-  .search-icon {
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #888;
-    font-size: 14px;
-    pointer-events: none;
-  }
-  .search-results {
-    position: absolute;
-    top: 100%;
-    left: 0; right: 0;
-    background: #fff;
-    border: 1px solid #c9c9c9;
-    border-top: none;
-    border-radius: 0 0 4px 4px;
-    z-index: 50;
-    box-shadow: 0 4px 10px rgba(0,0,0,.12);
-    display: none;
-  }
-  .search-results.open { display: block; }
-  .search-result-item {
-    padding: 9px 12px;
-    font-size: 13px;
-    cursor: pointer;
-    border-bottom: 1px solid #f0f0f0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .search-result-item:last-child { border-bottom: none; }
-  .search-result-item:hover { background: #f0f7ff; }
-  .search-result-item .hh-name { font-weight: 600; }
-  .search-result-item .hh-meta { font-size: 11px; color: #666; }
-
-  /* ── Investments table ── */
-  .inv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .inv-table th {
-    background: #f8f8f8;
-    padding: 9px 10px;
-    text-align: left;
-    font-size: 11px;
+    padding: 0 28px 0 10px;
+    font-size: 0.85rem;
     font-weight: 700;
-    color: #555;
-    text-transform: uppercase;
-    letter-spacing: .4px;
-    border-bottom: 2px solid #e5e5e5;
-  }
-  .inv-table td {
-    padding: 8px 10px;
-    border-bottom: 1px solid #f0f0f0;
-    vertical-align: middle;
-  }
-  .inv-table tr:last-child td { border-bottom: none; }
-  .inv-table input, .inv-table select {
-    height: 32px;
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
-    padding: 0 8px;
-    font-size: 12px;
-    width: 100%;
-    background: #fff;
-  }
-  .inv-table input:focus, .inv-table select:focus {
-    outline: none;
-    border-color: #0176d3;
-  }
-  .fee-tbd {
-    display: inline-block;
-    background: #fff4cc;
-    color: #805500;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 10px;
-  }
-  .fee-set {
-    display: inline-block;
-    background: #e6f4ea;
-    color: #1a6b2a;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 10px;
-  }
-
-  /* Strategy pick button */
-  .btn-pick {
-    background: #f0f7ff;
-    border: 1px solid #0176d3;
-    color: #0176d3;
-    border-radius: 4px;
-    padding: 4px 10px;
-    font-size: 11px;
-    font-weight: 600;
+    color: #16325c;
     cursor: pointer;
-    white-space: nowrap;
-    transition: background .15s;
+    height: 100%;
+    min-width: 120px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2354698d'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
   }
-  .btn-pick:hover { background: #d6eeff; }
-  .btn-pick.selected { background: #0176d3; color: #fff; }
+  .ctx-select:focus { outline: none; }
+  .ctx-select.ctx-std { color: #0070d2; }
+  .ctx-select.ctx-gen { color: #0070d2; }
 
   /* ── Buttons ── */
   .btn {
-    padding: 9px 20px;
-    border: none;
-    border-radius: 4px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all .15s;
-  }
-  .btn-primary { background: #0176d3; color: #fff; }
-  .btn-primary:hover { background: #015fb5; }
-  .btn-secondary { background: #fff; color: #0176d3; border: 1px solid #0176d3; }
-  .btn-secondary:hover { background: #f0f7ff; }
-  .btn-success { background: #2e7d32; color: #fff; }
-  .btn-success:hover { background: #1b5e20; }
-  .btn-danger { background: #fff; color: #c62828; border: 1px solid #c62828; font-size: 12px; padding: 5px 10px; }
-  .btn-danger:hover { background: #fde8e8; }
-  .btn-sm { padding: 6px 14px; font-size: 12px; }
-  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
-
-  /* ── SMA toggle ── */
-  .toggle-check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-  .toggle-check input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: #0176d3; }
-  .toggle-check span { font-size: 13px; font-weight: 500; }
-
-  /* ── Results panel ── */
-  .results-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 14px;
-    margin-top: 4px;
-  }
-  .result-item {
-    background: #f8f8f8;
-    border-radius: 6px;
-    padding: 12px 14px;
-    border-left: 4px solid #e5e5e5;
-  }
-  .result-item.result-ok  { border-left-color: #2e7d32; }
-  .result-item.result-warn{ border-left-color: #e65100; }
-  .result-item.result-bad { border-left-color: #c62828; }
-  .result-label { font-size: 11px; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px; }
-  .result-value { font-size: 17px; font-weight: 700; color: #181818; }
-  .result-item.result-ok  .result-value { color: #1a6b2a; }
-  .result-item.result-warn .result-value { color: #bf360c; }
-  .result-item.result-bad .result-value { color: #c62828; }
-
-  /* ── Modal backdrop ── */
-  .modal-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.45);
-    z-index: 200;
-    align-items: center;
-    justify-content: center;
-  }
-  .modal-backdrop.open { display: flex; }
-  .modal {
-    background: #fff;
-    border-radius: 8px;
-    width: 740px;
-    max-width: 96vw;
-    max-height: 88vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 8px 32px rgba(0,0,0,.25);
-    overflow: hidden;
-  }
-  .modal-header {
-    background: #0176d3;
-    color: #fff;
-    padding: 14px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .modal-header h3 { font-size: 15px; font-weight: 600; }
-  .modal-close { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; line-height: 1; }
-  .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
-  .modal-footer { padding: 14px 20px; border-top: 1px solid #e5e5e5; display: flex; justify-content: flex-end; gap: 10px; }
-
-  /* Strategy table inside modal */
-  .strat-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .strat-table th {
-    background: #0176d3;
-    color: #fff;
-    padding: 8px 10px;
-    text-align: left;
-    font-size: 11px;
-    font-weight: 700;
-    white-space: nowrap;
-  }
-  .strat-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
-  .strat-table tr:hover td { background: #f0f7ff; cursor: pointer; }
-  .strat-table tr.selected-row td { background: #d6eeff; }
-  .strat-filter-row { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
-  .strat-filter-row select, .strat-filter-row input {
-    height: 34px;
-    border: 1px solid #c9c9c9;
-    border-radius: 4px;
-    padding: 0 10px;
-    font-size: 12px;
-    flex: 1;
-    min-width: 130px;
-    background: #fff;
-  }
-  .strat-filter-row select:focus, .strat-filter-row input:focus {
-    outline: none; border-color: #0176d3;
-  }
-
-  /* ── Household info chip ── */
-  .hh-chip {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background: #e6f4ea;
-    border: 1px solid #81c784;
-    border-radius: 20px;
-    padding: 4px 12px 4px 8px;
-    font-size: 12px;
+    justify-content: center;
+    padding: 12px 28px;
+    border-radius: 4px;
+    font-size: 0.95rem;
     font-weight: 600;
-    color: #1a6b2a;
-    margin-top: 6px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 0.15s;
+    min-width: unset;
   }
-  .hh-chip .chip-remove { background: none; border: none; color: #1a6b2a; cursor: pointer; font-size: 14px; line-height: 1; }
+  .btn-brand   { background: #0070d2; color: white; border-color: #0070d2; }
+  .btn-brand:hover { background: #005fb2; }
+  .btn-neutral { background: white; color: #0070d2; border-color: #dddbda; }
+  .btn-neutral:hover { background: #f4f6f9; }
+  .btn-success { background: #2e844a; color: white; border-color: #2e844a; }
+  .btn-success:hover { background: #246b3a; }
+  .btn-purple  { background: #0070d2; color: white; border-color: #0070d2; }
+  .btn-purple:hover { background: #005fb2; }
+  .btn-sm { padding: 7px 16px; font-size: 0.85rem; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-  /* ── Badge ── */
-  .badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 600;
-  }
-  .badge-blue { background: #d6eeff; color: #0052a3; }
-  .badge-green { background: #e6f4ea; color: #1a6b2a; }
-
-  /* ── Generational panel ── */
-  .gen-members { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-  .gen-member {
-    border: 1px solid #e5e5e5;
-    border-radius: 6px;
-    padding: 12px 14px;
-    background: #fafafa;
+  /* ── Search row ── */
+  .search-row {
     display: flex;
-    align-items: center;
     gap: 12px;
+    align-items: flex-end;
+    margin-bottom: 20px;
     flex-wrap: wrap;
   }
-  .gen-member .member-name { font-weight: 600; font-size: 13px; flex: 1; min-width: 140px; }
-  .gen-member .member-aum { font-size: 12px; color: #444; }
-
-  /* ── Section divider ── */
-  .section-divider {
-    font-size: 11px;
-    font-weight: 700;
-    color: #888;
+  .field { flex: 1; min-width: 200px; }
+  .field label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #54698d;
     text-transform: uppercase;
-    letter-spacing: .6px;
-    padding: 4px 0 10px;
-    border-bottom: 1px solid #e8e8e8;
-    margin-bottom: 14px;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
   }
-
-  /* ── Brokerage AUM row ── */
-  .brok-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: #fff8e1;
-    border: 1px dashed #f0a500;
-    border-radius: 6px;
-    padding: 10px 14px;
-    margin-bottom: 16px;
-  }
-  .brok-row label { font-size: 13px; font-weight: 600; color: #5d4200; flex: 1; }
-  .brok-row input {
-    width: 160px;
-    height: 34px;
-    border: 1px solid #c9c9c9;
+  .field input, .field select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #dddbda;
     border-radius: 4px;
-    padding: 0 10px;
-    font-size: 13px;
+    font-size: 0.9rem;
+    color: #16325c;
+    background: white;
+    transition: border-color 0.15s;
   }
-  .brok-row input:focus { outline: none; border-color: #f0a500; box-shadow: 0 0 0 2px rgba(240,165,0,.15); }
-
-  /* ── Empty state ── */
-  .empty-state { text-align: center; padding: 30px; color: #888; font-size: 13px; }
-  .empty-state .icon { font-size: 32px; margin-bottom: 8px; }
-
-  /* ── Tooltip tag ── */
-  .tip { font-size: 11px; color: #888; margin-top: 2px; }
-
-  /* ── Landing ── */
-  #landing { max-width: 480px; margin: 60px auto; }
-  #landing .card-body { padding: 32px 28px; text-align: center; }
-  #landing h1 { font-size: 22px; color: #0176d3; margin-bottom: 8px; }
-  #landing p { font-size: 13px; color: #555; margin-bottom: 28px; }
-  #landing .btn { width: 100%; padding: 14px; font-size: 15px; }
-
-  /* ── Responsive ── */
-  @media(max-width:600px){
-    .results-grid { grid-template-columns: 1fr 1fr; }
-    .strat-table { font-size: 11px; }
-    .modal { width: 98vw; }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: #0070d2;
+    box-shadow: 0 0 0 3px rgba(0,112,210,0.2);
   }
+
+  /* Typeahead */
+  .search-inner { position: relative; flex: 1; }
+  .search-input-wrap { position: relative; height: 100%; }
+  .search-input-wrap input {
+    width: 100%; height: 100%;
+    padding: 8px 32px 8px 10px;
+    border: none; border-radius: 0;
+    font-size: 0.9rem; color: #16325c; background: white;
+  }
+  .search-input-wrap input:focus { outline: none; box-shadow: none; }
+  .search-clear {
+    position: absolute;
+    right: 8px; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none;
+    cursor: pointer; color: #54698d;
+    font-size: 1.1rem; line-height: 1;
+    padding: 2px 4px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .search-clear:hover { background: #f0f0f0; color: #16325c; }
+  .dropdown {
+    position: fixed;
+    background: white;
+    border: 1px solid #dddbda;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    z-index: 9999;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .dropdown-item { padding: 10px 14px; cursor: pointer; font-size: 0.9rem; border-bottom: 1px solid #f3f2f2; }
+  .dropdown-item:last-child { border-bottom: none; }
+  .dropdown-item:hover { background: #f4f6f9; }
+  .dropdown-item .hh-name { font-weight: 600; }
+  .dropdown-item .hh-meta { font-size: 0.78rem; color: #54698d; margin-top: 2px; }
+
+  /* ── HH summary bar ── */
+  .hh-summary {
+    background: #f4f6f9;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    align-items: center;
+    font-size: 0.88rem;
+  }
+  .hh-summary strong { color: #0070d2; }
+  .qual-yes { color: #2e844a; font-weight: 700; }
+  .qual-no  { color: #dd7a01; font-weight: 700; }
+
+  /* ── Section label bar ── */
+  .section-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 24px 0 8px 0;
+  }
+  .section-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #54698d;
+    padding: 4px 10px;
+    background: #e8f4fd;
+    border-left: 3px solid #0070d2;
+    border-radius: 0 3px 3px 0;
+  }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; border: 1px solid #dddbda; border-radius: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  .table-existing { min-width: 600px; }
+  .table-new      { min-width: 1000px; }
+  thead tr { background: #0070d2; color: white; }
+  thead th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid #f3f2f2; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #f8f9fb; }
+  tbody td { padding: 10px 12px; color: #16325c; white-space: nowrap; }
+  tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .tag-sma {
+    display: inline-block; background: #e8f4fd; color: #0070d2;
+    border-radius: 3px; padding: 1px 6px; font-size: 0.72rem;
+    font-weight: 600; margin-left: 4px; vertical-align: middle;
+  }
+  .tag-hh {
+    display: inline-block; background: #e8f4fd; color: #0070d2;
+    border-radius: 3px; padding: 1px 6px; font-size: 0.72rem;
+    font-weight: 600; margin-left: 4px; vertical-align: middle;
+  }
+
+  .btn-del {
+    background: none; border: none; color: #ba0517;
+    cursor: pointer; font-size: 1rem; padding: 2px 6px; border-radius: 3px;
+  }
+  .btn-del:hover { background: #fde8ea; }
+
+  .empty-new {
+    text-align: center; padding: 28px; color: #54698d;
+    font-size: 0.88rem; background: #fafafa;
+  }
+
+  .ok   { color: #2e844a; }
+  .warn { color: #dd7a01; }
+  .bad  { color: #ba0517; }
+
+  .empty-state { text-align: center; padding: 40px 24px; color: #54698d; }
+  .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+
+  /* ── Error toast modal ── */
+  .error-modal-overlay {
+    position: fixed; inset: 0;
+    z-index: 700;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .error-modal {
+    background: white; border-radius: 6px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.28);
+    width: 360px; max-width: 90%;
+    padding: 20px 24px;
+    pointer-events: all;
+    border-top: 4px solid #ba0517;
+  }
+  .error-modal-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 12px;
+  }
+  .error-modal-header .error-x {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #ba0517; color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+  }
+  .error-modal-header h4 {
+    margin: 0; font-size: 1rem; color: #ba0517; font-weight: 700;
+  }
+  .error-modal p { margin: 0 0 16px 0; font-size: 0.88rem; color: #3e3e3c; }
+  .error-modal-footer { display: flex; justify-content: flex-end; }
+
+  /* ── Modals ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 500;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal {
+    background: white; border-radius: 6px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    width: 480px; max-width: 100%;
+    padding: 28px; max-height: 90vh; overflow-y: auto;
+  }
+  .modal-lg { width: 680px; }
+  .modal-header {
+    display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 20px;
+  }
+  .modal-header h3 { margin: 0; font-size: 1.05rem; }
+  .modal-close {
+    background: none; border: none; font-size: 1.4rem;
+    cursor: pointer; color: #54698d; line-height: 1; padding: 0 4px;
+  }
+  .modal-close:hover { color: #16325c; }
+  .modal-fields { display: flex; flex-direction: column; gap: 16px; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+
+  /* ── Create Gen HH modal ── */
+  .ghh-search-wrap { position: relative; }
+  .hh-checklist { border: 1px solid #dddbda; border-radius: 4px; max-height: 260px; overflow-y: auto; }
+  .hh-check-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 14px; border-bottom: 1px solid #f3f2f2;
+    cursor: pointer; transition: background 0.1s;
+  }
+  .hh-check-item:last-child { border-bottom: none; }
+  .hh-check-item:hover { background: #f4f6f9; }
+  .hh-check-item input[type="checkbox"] {
+    width: 16px; height: 16px; margin-top: 2px;
+    accent-color: #0070d2; cursor: pointer; flex-shrink: 0;
+  }
+  .hh-check-item .ci-name { font-weight: 600; font-size: 0.88rem; }
+  .hh-check-item .ci-meta { font-size: 0.76rem; color: #54698d; margin-top: 2px; }
+
+  .ghh-selection-summary {
+    background: #f4f6f9; border-radius: 4px; padding: 10px 14px;
+    font-size: 0.85rem; display: flex; justify-content: space-between;
+    align-items: center; flex-wrap: wrap; gap: 8px;
+  }
+  .ghh-selection-summary strong { color: #0070d2; }
+  .ghh-aum-highlight { font-weight: 700; font-size: 0.95rem; }
+  .ghh-aum-highlight.qualifies { color: #2e844a; }
+  .ghh-aum-highlight.not-yet   { color: #dd7a01; }
+
+  .attestation-box {
+    background: #fffbf0; border: 1px solid #f0c844;
+    border-radius: 4px; padding: 14px 16px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .attestation-box input[type="checkbox"] {
+    width: 17px; height: 17px; margin-top: 2px;
+    accent-color: #0070d2; cursor: pointer; flex-shrink: 0;
+  }
+  .attestation-text { font-size: 0.82rem; line-height: 1.55; color: #3e3e3c; font-style: italic; }
+
+  .modal-footer-attestation {
+    display: flex; justify-content: flex-end; gap: 10px;
+    margin-top: 20px; padding-top: 16px; border-top: 1px solid #f3f2f2;
+  }
+
+  [hidden] { display: none !important; }
+
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════ HEADER ═══════════════════ -->
-<header class="app-header">
-  <div class="logo">&#9673; BFE Advisory</div>
-  <div class="subtitle">Advisory Pricing Calculator</div>
-</header>
+<div class="card">
+  <div class="card-header">&#9733; Advisory Pricing Calculator</div>
+  <div class="card-body">
+    <!-- ── SEARCH ROW ── -->
+    <div class="search-row">
 
-<!-- ═══════════════════ LANDING ═══════════════════ -->
-<div id="landing" class="page">
-  <div class="card">
-    <div class="card-body">
-      <h1>Advisory Pricing Calculator</h1>
-      <p>Calculate advisory fees, participation minimums, and estimated pay rates for household accounts.</p>
-      <button class="btn btn-primary" onclick="startCalculation()">+ New Calculation</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════ CALCULATOR ═══════════════════ -->
-<div id="calculator" class="page" style="display:none">
-
-  <!-- Back -->
-  <div style="margin-bottom:12px">
-    <button class="btn btn-secondary btn-sm" onclick="goBack()">&#8592; Back</button>
-  </div>
-
-  <!-- ── Household Type Toggle ── -->
-  <div class="card">
-    <div class="card-header">
-      <h2>&#127968; Household Type</h2>
-    </div>
-    <div class="card-body">
-      <div class="toggle-bar">
-        <button class="toggle-btn active" id="toggleStd" onclick="setHHType('standard')">Standard Household</button>
-        <button class="toggle-btn"        id="toggleGen" onclick="setHHType('generational')">Generational Household</button>
-      </div>
-
-      <!-- STANDARD -->
-      <div id="panelStandard">
-        <div class="section-divider">Search Household</div>
-        <div class="form-row">
-          <div class="form-group" style="flex:2">
-            <label>Household Name</label>
-            <div class="search-wrap">
-              <span class="search-icon">&#128269;</span>
-              <input type="text" id="hhSearch" placeholder="Search by household name…" oninput="filterHouseholds(this.value)" autocomplete="off" />
-              <div class="search-results" id="hhSearchResults"></div>
+      <!-- Combined dropdown + search bar -->
+      <div style="flex:2;min-width:260px;display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:0.78rem;font-weight:600;color:#54698d;text-transform:uppercase;letter-spacing:0.04em;" id="searchLabel">Household Search</label>
+        <div class="search-bar-wrap" style="height:36px;">
+          <!-- Context dropdown -->
+          <div class="ctx-select-wrap">
+            <select id="ctxSelect" class="ctx-select ctx-std" onchange="setCtx(this.value)">
+              <option value="std">Standard</option>
+              <option value="gen">Generational</option>
+            </select>
+          </div>
+          <!-- Typeahead input -->
+          <div class="search-inner">
+            <div class="search-input-wrap">
+              <input type="text" id="hhSearch" placeholder="Type a household name…"
+                     oninput="onSearchInput()" autocomplete="off">
+              <button class="search-clear" id="clearBtn" hidden
+                      onmousedown="event.preventDefault(); clearSelection()" title="Clear selection">&#215;</button>
             </div>
-            <div id="hhChip"></div>
-          </div>
-          <div class="form-group">
-            <label>HH Advisory AUM (Total)</label>
-            <input type="number" id="hhAUMDisplay" placeholder="Auto-filled" readonly />
-            <span class="tip">Populated from household selection</span>
           </div>
         </div>
       </div>
 
-      <!-- GENERATIONAL -->
-      <div id="panelGenerational" style="display:none">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px">
-          <div class="section-divider" style="margin:0;border:none">Generational Household Members</div>
-          <button class="btn btn-success btn-sm" onclick="openCreateHHModal()">+ Create Household</button>
-        </div>
-        <div class="gen-members" id="genMemberList">
-          <div class="gen-member">
-            <div class="member-name">Smith, John &amp; Mary (Primary)</div>
-            <div class="member-aum">Advisory AUM: $2,450,000</div>
-            <span class="badge badge-green">Primary</span>
-          </div>
-          <div class="gen-member">
-            <div class="member-name">Smith, Robert (Gen 2)</div>
-            <div class="member-aum">Advisory AUM: $875,000</div>
-            <span class="badge badge-blue">Member</span>
-          </div>
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-secondary btn-sm" onclick="addGenMember()">+ Add Member Household</button>
-        </div>
-        <div class="form-row" style="margin-top:16px">
-          <div class="form-group">
-            <label>Total Generational AUM</label>
-            <input type="number" id="genAUMTotal" value="3325000" readonly />
-          </div>
-        </div>
+      <!-- Additional Brokerage AUM -->
+      <div class="field" style="max-width:240px;">
+        <label>Additional Brokerage AUM ($)</label>
+        <input type="number" id="additionalAUM" value="0" min="0" step="1000"
+               onchange="recalcIfLoaded()">
+      </div>
+
+      <!-- Create Gen HH button (generational only) -->
+      <div id="createGHHWrap" hidden style="align-self:flex-end;">
+        <button class="btn btn-purple btn-sm" onclick="openCreateGHH()">+ Create Generational HH</button>
+      </div>
+
+    </div>
+
+    <!-- ── HH SUMMARY ── -->
+    <div class="hh-summary" id="hhSummary" hidden>
+      <span id="sumHHLabel">Household:</span> <strong id="sumName">—</strong>
+      <span id="sumMembersWrap" hidden>Member Households: <strong id="sumMembers">—</strong></span>
+      <span>Total HH AUM: <strong id="sumAUM">—</strong></span>
+      <span>Accounts: <strong id="sumAccts">—</strong></span>
+      <span>HH Discount: <span id="sumQual">—</span></span>
+    </div>
+
+    <!-- ── EXISTING ACCOUNTS ── -->
+    <div id="existingArea">
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <p>Search for a household above to load existing accounts.</p>
       </div>
     </div>
-  </div>
 
-  <!-- ── Brokerage AUM ── -->
-  <div class="card">
-    <div class="card-header">
-      <h2>&#128184; Additional Brokerage AUM</h2>
+    <!-- ── NEW INVESTMENTS ── -->
+    <div class="section-bar">
+      <span class="section-label">New Investments</span>
+      <button class="btn btn-brand btn-sm" onclick="openInvModal()">+ Add Investment</button>
     </div>
-    <div class="card-body">
-      <div class="brok-row">
-        <label>Additional Brokerage AUM (optional)</label>
-        <input type="number" id="brokAUM" placeholder="$0.00" oninput="updateCalcInput('brokAUM', this.value)" />
-      </div>
-      <span class="tip">Include brokerage assets that count toward household AUM thresholds but are not fee-eligible advisory accounts.</span>
-    </div>
-  </div>
-
-  <!-- ── Investments ── -->
-  <div class="card">
-    <div class="card-header">
-      <h2>&#128200; Investments</h2>
-    </div>
-    <div class="card-body">
-      <table class="inv-table">
-        <thead>
-          <tr>
-            <th style="width:22%">Account / Investment Name</th>
-            <th style="width:16%">Investment Amount</th>
-            <th style="width:22%">Investment Object (Strategy)</th>
-            <th style="width:14%">Client Fee (bps)</th>
-            <th style="width:14%">Manager Fee</th>
-            <th style="width:12%">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="invTableBody">
-          <!-- Rows injected by JS -->
+    <div class="table-wrap">
+      <table class="table-new">
+        <thead><tr>
+          <th>Name</th><th>Program</th><th>Manager</th><th>Strategy</th>
+          <th>Account Value</th><th>Min Advisor Fee</th><th>Manager Fee</th>
+          <th>Min Total Fee</th><th>Client Fee</th><th>Max Payout</th><th></th>
+        </tr></thead>
+        <tbody id="newInvBody">
+          <tr><td colspan="11" class="empty-new">No investments added yet — click <strong>+ Add Investment</strong> to begin.</td></tr>
         </tbody>
       </table>
-      <div id="invEmpty" class="empty-state" style="display:none">
-        <div class="icon">&#128196;</div>
-        <div>No investments added yet. Click below to add one.</div>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-secondary btn-sm" onclick="addInvestment()">+ Add Investment</button>
-      </div>
     </div>
+
   </div>
+</div>
 
-  <!-- ── Manual Inputs for Calculation ── -->
-  <div class="card">
-    <div class="card-header">
-      <h2>&#128736;&#65039; Calculation Inputs</h2>
-    </div>
-    <div class="card-body">
-      <div class="form-row">
-        <div class="form-group">
-          <label>Account AUM ($)</label>
-          <input type="number" id="acctAUM" placeholder="e.g. 500000" oninput="syncInput('acctAUM', this.value)" />
-        </div>
-        <div class="form-group">
-          <label>HH Advisory AUM Total ($)</label>
-          <input type="number" id="hhAUMTotal" placeholder="e.g. 1200000" oninput="syncInput('hhAUMTotal', this.value)" />
-        </div>
-        <div class="form-group">
-          <label>Actual Client Fee (bps)</label>
-          <input type="number" id="acFees" placeholder="e.g. 75" oninput="syncInput('acFees', this.value)" />
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Manager Fee Add-On (bps)</label>
-          <input type="number" id="newmin" placeholder="e.g. 10" oninput="syncInput('newmin', this.value)" />
-        </div>
-        <div class="form-group">
-          <label>Gross Revenue ($)</label>
-          <input type="number" id="grossRevenue" placeholder="e.g. 3750" oninput="syncInput('grossRevenue', this.value)" />
-        </div>
-        <div class="form-group">
-          <label>Net Revenue ($)</label>
-          <input type="number" id="netRevenue" placeholder="e.g. 1875" oninput="syncInput('netRevenue', this.value)" />
-        </div>
-      </div>
-      <div class="form-row" style="align-items:center">
-        <label class="toggle-check">
-          <input type="checkbox" id="isSMAFixed" onchange="syncCheck('isSMAFixed', this.checked)" />
-          <span>SMA Fixed Fee Schedule</span>
-        </label>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-primary" onclick="calculate()">&#9654;&#65039; Calculate</button>
-        <button class="btn btn-secondary" onclick="resetCalc()">&#8635; Reset</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Results ── -->
-  <div class="card" id="resultsCard" style="display:none">
-    <div class="card-header">
-      <h2>&#127919; Calculation Results</h2>
-    </div>
-    <div class="card-body">
-      <div class="results-grid" id="resultsGrid"></div>
-    </div>
-  </div>
-
-</div><!-- /calculator -->
-
-
-<!-- ═══════════════════ STRATEGY MODAL ═══════════════════ -->
-<div class="modal-backdrop" id="stratModal">
+<!-- ══ ADD INVESTMENT MODAL ══ -->
+<div class="modal-overlay" id="invModalOverlay" hidden onclick="closeInvModalOnOverlay(event)">
   <div class="modal">
     <div class="modal-header">
-      <h3>Select Investment Strategy</h3>
-      <button class="modal-close" onclick="closeStratModal()">&#215;</button>
+      <h3>Add Investment</h3>
+      <button class="modal-close" onclick="closeInvModal()">&#215;</button>
     </div>
-    <div class="modal-body">
-      <div class="strat-filter-row">
-        <select id="filterProgram" onchange="filterStrategies()">
-          <option value="">All Programs</option>
-          <option>SMA Fixed</option>
-          <option>Advisory Select</option>
-          <option>Multi-Asset</option>
-          <option>Unified Managed</option>
-        </select>
-        <input type="text" id="filterManager" placeholder="Search manager…" oninput="filterStrategies()" />
-        <input type="text" id="filterStrategy" placeholder="Search strategy…" oninput="filterStrategies()" />
+    <div class="modal-fields">
+      <div class="field">
+        <label>Name</label>
+        <input type="text" id="m-name" placeholder="Account / investor name">
       </div>
-      <div style="overflow-x:auto">
-        <table class="strat-table" id="stratTable">
-          <thead>
-            <tr>
-              <th>Program</th>
-              <th>Manager Name</th>
-              <th>Strategy</th>
-              <th>Min AUM</th>
-              <th>Manager Fee (bps)</th>
-              <th>Min Fee (bps)</th>
-              <th>Max Fee (bps)</th>
-              <th>Gross Max Pay (bps)</th>
-            </tr>
-          </thead>
-          <tbody id="stratTableBody"></tbody>
-        </table>
+      <div class="field">
+        <label>Investment Amount ($)</label>
+        <input type="number" id="m-amount" min="0" step="1000" placeholder="0">
+      </div>
+      <div class="field">
+        <label>Investment Objective</label>
+        <select id="m-objective">
+          <option value="">— Select objective —</option>
+          <option>Conservative Income</option>
+          <option>Moderate Income</option>
+          <option>Aggressive Income</option>
+          <option>Conservative Income and Growth</option>
+          <option>Moderate Income and Growth</option>
+          <option>Aggressive Income and Growth</option>
+          <option>Conservative Growth</option>
+          <option>Moderate Growth</option>
+          <option>Aggressive Growth</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Client Fee (%) — optional</label>
+        <input type="number" id="m-clientfee" min="0" step="0.01" placeholder="e.g. 0.85">
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeStratModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="confirmStrategy()">Select Strategy</button>
+      <button class="btn btn-neutral btn-sm" onclick="closeInvModal()">Cancel</button>
+      <button class="btn btn-success btn-sm" onclick="submitInvestment()">Add Investment</button>
     </div>
   </div>
 </div>
 
-
-<!-- ═══════════════════ CREATE HOUSEHOLD MODAL ═══════════════════ -->
-<div class="modal-backdrop" id="createHHModal">
-  <div class="modal" style="width:500px">
+<!-- ══ CREATE GENERATIONAL HH MODAL ══ -->
+<div class="modal-overlay" id="createGHHOverlay" hidden onclick="closeCreateGHHOnOverlay(event)">
+  <div class="modal modal-lg">
     <div class="modal-header">
       <h3>Create Generational Household</h3>
-      <button class="modal-close" onclick="closeCreateHHModal()">&#215;</button>
+      <button class="modal-close" onclick="closeCreateGHH()">&#215;</button>
     </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <div class="form-group" style="flex:2">
-          <label>Generational Household Name</label>
-          <input type="text" id="newHHName" placeholder="e.g. Smith Family Generational" />
-        </div>
+    <div class="modal-fields">
+      <div class="field">
+        <label>Generational Household Name</label>
+        <input type="text" id="ghh-name" placeholder="e.g. Manning Family Generational HH">
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Primary Household</label>
-          <div class="search-wrap">
-            <span class="search-icon">&#128269;</span>
-            <input type="text" id="newHHPrimary" placeholder="Search primary household…" />
-          </div>
-        </div>
+      <div class="field ghh-search-wrap">
+        <label>Search Households</label>
+        <input type="text" id="ghh-filter" placeholder="Filter households by name…"
+               oninput="renderGHHChecklist()" autocomplete="off">
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Relationship Type</label>
-          <select>
-            <option>Spouse/Partner</option>
-            <option>Parent/Child</option>
-            <option>Extended Family</option>
-            <option>Trust</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Effective Date</label>
-          <input type="date" />
-        </div>
+      <div>
+        <div class="field" style="margin-bottom:6px;"><label>Select Households to Merge</label></div>
+        <div class="hh-checklist" id="ghh-checklist"></div>
+      </div>
+      <div class="ghh-selection-summary">
+        <span>Selected: <strong id="ghh-selCount">0</strong> household(s)</span>
+        <span>Combined AUM: <span class="ghh-aum-highlight not-yet" id="ghh-selAUM">$0</span></span>
+      </div>
+      <div class="attestation-box">
+        <input type="checkbox" id="ghh-attest" onchange="updateCreateSubmitBtn()">
+        <label for="ghh-attest" class="attestation-text">
+          I hereby affirm and attest that the households identified are related and maintain a
+          connected familial or generational relationship, and that, to the best of my knowledge,
+          they meet the eligibility criteria to be designated as a Generational Household.
+        </label>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeCreateHHModal()">Cancel</button>
-      <button class="btn btn-success" onclick="closeCreateHHModal()">Create Household</button>
+    <div class="modal-footer-attestation">
+      <button class="btn btn-neutral btn-sm" onclick="closeCreateGHH()">Cancel</button>
+      <button class="btn btn-purple btn-sm" id="ghh-submitBtn" disabled onclick="submitCreateGHH()">
+        Create Generational Household
+      </button>
     </div>
   </div>
 </div>
 
+<!-- Dropdown lives at body level so no ancestor overflow:hidden can clip it -->
+<div class="dropdown" id="dropdown" hidden></div>
+
+<!-- ══ ERROR MODAL ══ -->
+<div class="error-modal-overlay" id="errorModalOverlay" hidden>
+  <div class="error-modal">
+    <div class="error-modal-header">
+      <div class="error-x">&#10005;</div>
+      <h4>Error</h4>
+    </div>
+    <p id="errorModalMsg"></p>
+    <div class="error-modal-footer">
+      <button class="btn btn-neutral btn-sm" onclick="closeErrorModal()">OK</button>
+    </div>
+  </div>
+</div>
 
 <script>
-// ═══════════════════════════════════════════════════════
-//  DATA
-// ═══════════════════════════════════════════════════════
-
+// ═════════════════════════════════════════════════════════════════════════════
+// DATA
+// ═════════════════════════════════════════════════════════════════════════════
 const HOUSEHOLDS = [
-  { id: 1, name: 'Anderson, James & Linda', aum: 1850000, accounts: 3 },
-  { id: 2, name: 'Martinez, Carlos',        aum:  620000, accounts: 1 },
-  { id: 3, name: 'Chen, Wei & Mei',          aum: 3200000, accounts: 5 },
-  { id: 4, name: 'Williams, Robert',         aum:  490000, accounts: 2 },
-  { id: 5, name: 'Thompson, Sarah',          aum: 2100000, accounts: 4 },
-  { id: 6, name: 'Johnson, David & Karen',   aum:  975000, accounts: 2 },
-  { id: 7, name: 'Davis, Patricia',          aum: 5400000, accounts: 6 },
-  { id: 8, name: 'Wilson, Michael & Sue',    aum: 1100000, accounts: 3 },
+  {
+    id: 'HH001', name: 'Anderson Family',
+    accounts: [
+      { name: 'James Anderson', program: 'Advisory', manager: 'BlackRock',      strategy: 'Core Equity',        aum: 850000,  clientFeePct: 0.85, managerFeeBps: 10, isSMA: false },
+      { name: 'Linda Anderson', program: 'Advisory', manager: 'BlackRock',      strategy: 'Fixed Income',       aum: 420000,  clientFeePct: 0.80, managerFeeBps: 10, isSMA: false },
+    ]
+  },
+  {
+    id: 'HH002', name: 'Bennett Household',
+    accounts: [
+      { name: 'Robert Bennett', program: 'SMA',      manager: 'Parametric',     strategy: 'Tax-Loss Harvest',   aum: 1200000, clientFeePct: 0.70, managerFeeBps: 8,  isSMA: true  },
+      { name: 'Susan Bennett',  program: 'Advisory', manager: 'Vanguard',       strategy: 'Balanced Growth',    aum: 650000,  clientFeePct: 0.75, managerFeeBps: 10, isSMA: false },
+      { name: 'Bennett Trust',  program: 'Advisory', manager: 'Vanguard',       strategy: 'Income',             aum: 300000,  clientFeePct: 0.90, managerFeeBps: 10, isSMA: false },
+    ]
+  },
+  {
+    id: 'HH003', name: 'Chen Family',
+    accounts: [
+      { name: 'David Chen',     program: 'UMA',      manager: 'Fidelity',       strategy: 'Multi-Asset Growth', aum: 3500000, clientFeePct: 0.60, managerFeeBps: 12, isSMA: false },
+      { name: 'Michelle Chen',  program: 'UMA',      manager: 'Fidelity',       strategy: 'Multi-Asset Income', aum: 1800000, clientFeePct: 0.60, managerFeeBps: 12, isSMA: false },
+    ]
+  },
+  {
+    id: 'HH004', name: 'Davis Retirement',
+    accounts: [
+      { name: 'Frank Davis',    program: 'Advisory', manager: 'American Funds', strategy: 'Growth & Income',    aum: 220000,  clientFeePct: 1.00, managerFeeBps: 15, isSMA: false },
+    ]
+  },
+  {
+    id: 'HH005', name: 'Evans & Partners',
+    accounts: [
+      { name: 'George Evans',   program: 'SMA',      manager: 'Parametric',     strategy: 'Custom Index',       aum: 2100000, clientFeePct: 0.55, managerFeeBps: 8,  isSMA: true  },
+      { name: 'Evans LLC',      program: 'SMA',      manager: 'Parametric',     strategy: 'ESG Equity',         aum: 1400000, clientFeePct: 0.60, managerFeeBps: 8,  isSMA: true  },
+      { name: 'Patricia Evans', program: 'Advisory', manager: 'T. Rowe Price',  strategy: 'Mid-Cap Growth',     aum: 480000,  clientFeePct: 0.78, managerFeeBps: 12, isSMA: false },
+    ]
+  },
+  {
+    id: 'HH006', name: 'Foster Family Trust',
+    accounts: [
+      { name: 'Harold Foster',  program: 'Advisory', manager: 'JPMorgan',       strategy: 'Equity Income',      aum: 560000,  clientFeePct: 0.88, managerFeeBps: 10, isSMA: false },
+      { name: 'Foster Trust',   program: 'Advisory', manager: 'JPMorgan',       strategy: 'Core Bond',          aum: 390000,  clientFeePct: 0.82, managerFeeBps: 10, isSMA: false },
+    ]
+  },
+  {
+    id: 'HH007', name: 'Archie Manning Household',
+    accounts: [
+      { name: 'Archie Manning', program: 'Advisory', manager: 'JPMorgan',       strategy: 'Balanced Growth',    aum: 480000,  clientFeePct: 0.90, managerFeeBps: 10, isSMA: false },
+      { name: 'Manning Trust',  program: 'Advisory', manager: 'JPMorgan',       strategy: 'Fixed Income',       aum: 310000,  clientFeePct: 0.85, managerFeeBps: 10, isSMA: false },
+    ]
+  },
+  {
+    id: 'HH008', name: 'Peyton Manning Household',
+    accounts: [
+      { name: 'Peyton Manning',  program: 'SMA',     manager: 'Parametric',     strategy: 'Custom Index',       aum: 750000,  clientFeePct: 0.72, managerFeeBps: 8,  isSMA: true  },
+      { name: 'PFM Investments', program: 'Advisory',manager: 'BlackRock',      strategy: 'Core Equity',        aum: 420000,  clientFeePct: 0.80, managerFeeBps: 10, isSMA: false },
+    ]
+  },
+  {
+    id: 'HH009', name: 'Deion Sanders Household',
+    accounts: [
+      { name: 'Deion Sanders',    program: 'Advisory', manager: 'BlackRock',    strategy: 'Core Equity',        aum: 620000,  clientFeePct: 0.88, managerFeeBps: 10, isSMA: false },
+      { name: 'Prime Time Trust', program: 'SMA',      manager: 'Parametric',   strategy: 'Custom Index',       aum: 390000,  clientFeePct: 0.75, managerFeeBps: 8,  isSMA: true  },
+    ]
+  },
+  {
+    id: 'HH010', name: 'Shedeur Sanders Household',
+    accounts: [
+      { name: 'Shedeur Sanders',  program: 'Advisory', manager: 'Vanguard',     strategy: 'Growth',             aum: 275000,  clientFeePct: 0.95, managerFeeBps: 10, isSMA: false },
+    ]
+  },
 ];
 
-const STRATEGIES = [
-  { program:'SMA Fixed',        manager:'BlackRock',       strategy:'Core Equity',         minAUM:250000,  mgr:15, minFee:50, maxFee:100, grossMax:60 },
-  { program:'SMA Fixed',        manager:'Vanguard',        strategy:'Index Plus',          minAUM:100000,  mgr:8,  minFee:40, maxFee:85,  grossMax:50 },
-  { program:'Advisory Select',  manager:'PIMCO',           strategy:'Total Return',        minAUM:500000,  mgr:20, minFee:60, maxFee:120, grossMax:70 },
-  { program:'Advisory Select',  manager:'Fidelity',        strategy:'Contrafund SMA',      minAUM:250000,  mgr:18, minFee:55, maxFee:110, grossMax:65 },
-  { program:'Multi-Asset',      manager:'JP Morgan',       strategy:'Balanced Growth',     minAUM:500000,  mgr:25, minFee:65, maxFee:130, grossMax:75 },
-  { program:'Multi-Asset',      manager:'Morgan Stanley',  strategy:'Global Allocation',   minAUM:750000,  mgr:30, minFee:70, maxFee:140, grossMax:80 },
-  { program:'Unified Managed',  manager:'Goldman Sachs',   strategy:'UMA Core',            minAUM:1000000, mgr:22, minFee:70, maxFee:135, grossMax:78 },
-  { program:'Unified Managed',  manager:'Merrill Lynch',   strategy:'Custom UMA',          minAUM:750000,  mgr:20, minFee:65, maxFee:125, grossMax:72 },
-  { program:'SMA Fixed',        manager:'T. Rowe Price',   strategy:'Growth Stock',        minAUM:250000,  mgr:16, minFee:52, maxFee:105, grossMax:62 },
-  { program:'Advisory Select',  manager:'Schwab',          strategy:'Fundamental Select',  minAUM:100000,  mgr:10, minFee:45, maxFee:90,  grossMax:55 },
-];
+let generationalHHs = [];
+let ghhIdCounter    = 1;
 
-// ═══════════════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════════════
-
-let investments = [];
-let invIdCounter = 1;
-let selectedHH = null;
-let hhType = 'standard';
-let currentInvId = null;   // which row is picking a strategy
-let selectedStratIdx = null;
-
-const calcState = {
-  acctAUM: 0, hhAUMTotal: 0, acFees: 0,
-  newmin: 0, grossRevenue: 0, netRevenue: 0, isSMAFixed: false
-};
-
-// ═══════════════════════════════════════════════════════
-//  NAVIGATION
-// ═══════════════════════════════════════════════════════
-
-function startCalculation() {
-  document.getElementById('landing').style.display = 'none';
-  document.getElementById('calculator').style.display = 'block';
-  renderInvestments();
-}
-
-function goBack() {
-  document.getElementById('landing').style.display = 'block';
-  document.getElementById('calculator').style.display = 'none';
-  document.getElementById('resultsCard').style.display = 'none';
-  investments = [];
-  selectedHH = null;
-  resetCalc();
-}
-
-function setHHType(type) {
-  hhType = type;
-  document.getElementById('toggleStd').classList.toggle('active', type === 'standard');
-  document.getElementById('toggleGen').classList.toggle('active', type === 'generational');
-  document.getElementById('panelStandard').style.display    = type === 'standard'     ? '' : 'none';
-  document.getElementById('panelGenerational').style.display = type === 'generational' ? '' : 'none';
-}
-
-// ═══════════════════════════════════════════════════════
-//  HOUSEHOLD SEARCH
-// ═══════════════════════════════════════════════════════
-
-function filterHouseholds(val) {
-  const box = document.getElementById('hhSearchResults');
-  if (!val.trim()) { box.classList.remove('open'); return; }
-  const lower = val.toLowerCase();
-  const hits = HOUSEHOLDS.filter(h => h.name.toLowerCase().includes(lower));
-  if (!hits.length) { box.innerHTML='<div class="search-result-item">No results found</div>'; box.classList.add('open'); return; }
-  box.innerHTML = hits.map(h => `
-    <div class="search-result-item" onclick="selectHousehold(${h.id})">
-      <span class="hh-name">${h.name}</span>
-      <span class="hh-meta">Advisory AUM: ${fmt(h.aum)} &nbsp;|&nbsp; ${h.accounts} account(s)</span>
-    </div>`).join('');
-  box.classList.add('open');
-}
-
-function selectHousehold(id) {
-  selectedHH = HOUSEHOLDS.find(h => h.id === id);
-  document.getElementById('hhSearch').value = selectedHH.name;
-  document.getElementById('hhAUMDisplay').value = selectedHH.aum;
-  document.getElementById('hhAUMTotal').value = selectedHH.aum;
-  calcState.hhAUMTotal = selectedHH.aum;
-  document.getElementById('hhSearchResults').classList.remove('open');
-  document.getElementById('hhChip').innerHTML = `
-    <div class="hh-chip">
-      &#127968; ${selectedHH.name} &nbsp; ${fmt(selectedHH.aum)}
-      <button class="chip-remove" onclick="clearHH()">&#215;</button>
-    </div>`;
-}
-
-function clearHH() {
-  selectedHH = null;
-  document.getElementById('hhSearch').value = '';
-  document.getElementById('hhAUMDisplay').value = '';
-  document.getElementById('hhAUMTotal').value = '';
-  calcState.hhAUMTotal = 0;
-  document.getElementById('hhChip').innerHTML = '';
-}
-
-// Close dropdown on outside click
-document.addEventListener('click', e => {
-  if (!e.target.closest('.search-wrap')) {
-    document.querySelectorAll('.search-results').forEach(el => el.classList.remove('open'));
-  }
-});
-
-// ═══════════════════════════════════════════════════════
-//  INVESTMENTS
-// ═══════════════════════════════════════════════════════
-
-function addInvestment() {
-  investments.push({ id: invIdCounter++, name: '', amount: 0, strategy: null, clientFee: null });
-  renderInvestments();
-}
-
-function removeInvestment(id) {
-  investments = investments.filter(i => i.id !== id);
-  renderInvestments();
-}
-
-function renderInvestments() {
-  const tbody = document.getElementById('invTableBody');
-  const empty = document.getElementById('invEmpty');
-  if (!investments.length) {
-    tbody.innerHTML = '';
-    empty.style.display = 'block';
-    return;
-  }
-  empty.style.display = 'none';
-  tbody.innerHTML = investments.map(inv => {
-    const stratLabel = inv.strategy
-      ? `<span class="btn-pick selected" onclick="openStratModal(${inv.id})">${inv.strategy.strategy}</span>`
-      : `<button class="btn-pick" onclick="openStratModal(${inv.id})">Pick Strategy</button>`;
-    const feeBadge = inv.clientFee !== null
-      ? `<span class="fee-set">${inv.clientFee} bps</span>`
-      : `<span class="fee-tbd">TBD</span>`;
-    const mgrFee = inv.strategy ? `${inv.strategy.mgr} bps` : '—';
-    return `<tr>
-      <td><input type="text" value="${inv.name}" placeholder="Account name" oninput="updateInv(${inv.id},'name',this.value)" /></td>
-      <td><input type="number" value="${inv.amount||''}" placeholder="$" oninput="updateInv(${inv.id},'amount',parseFloat(this.value)||0)" /></td>
-      <td>${stratLabel}</td>
-      <td>${feeBadge}</td>
-      <td style="color:#555;font-size:12px">${mgrFee}</td>
-      <td><button class="btn btn-danger" onclick="removeInvestment(${inv.id})">&#128465;</button></td>
-    </tr>`;
-  }).join('');
-}
-
-function updateInv(id, field, val) {
-  const inv = investments.find(i => i.id === id);
-  if (inv) inv[field] = val;
-}
-
-// ═══════════════════════════════════════════════════════
-//  STRATEGY MODAL
-// ═══════════════════════════════════════════════════════
-
-function openStratModal(invId) {
-  currentInvId = invId;
-  selectedStratIdx = null;
-  document.getElementById('filterProgram').value = '';
-  document.getElementById('filterManager').value = '';
-  document.getElementById('filterStrategy').value = '';
-  renderStratTable(STRATEGIES);
-  document.getElementById('stratModal').classList.add('open');
-}
-
-function closeStratModal() {
-  document.getElementById('stratModal').classList.remove('open');
-}
-
-function filterStrategies() {
-  const prog = document.getElementById('filterProgram').value.toLowerCase();
-  const mgr  = document.getElementById('filterManager').value.toLowerCase();
-  const strat= document.getElementById('filterStrategy').value.toLowerCase();
-  const filtered = STRATEGIES.filter(s =>
-    (!prog  || s.program.toLowerCase().includes(prog)) &&
-    (!mgr   || s.manager.toLowerCase().includes(mgr))  &&
-    (!strat || s.strategy.toLowerCase().includes(strat))
-  );
-  renderStratTable(filtered);
-}
-
-function renderStratTable(data) {
-  const tbody = document.getElementById('stratTableBody');
-  tbody.innerHTML = data.map((s, i) => `
-    <tr class="${selectedStratIdx === i ? 'selected-row' : ''}" onclick="selectStratRow(${i}, this)">
-      <td>${s.program}</td>
-      <td>${s.manager}</td>
-      <td><strong>${s.strategy}</strong></td>
-      <td>${fmt(s.minAUM)}</td>
-      <td>${s.mgr}</td>
-      <td>${s.minFee}</td>
-      <td>${s.maxFee}</td>
-      <td>${s.grossMax}</td>
-    </tr>`).join('');
-  // store filtered ref for confirm
-  document.getElementById('stratTableBody')._data = data;
-}
-
-function selectStratRow(i, tr) {
-  selectedStratIdx = i;
-  document.querySelectorAll('#stratTableBody tr').forEach(r => r.classList.remove('selected-row'));
-  tr.classList.add('selected-row');
-}
-
-function confirmStrategy() {
-  if (selectedStratIdx === null) { alert('Please select a strategy row.'); return; }
-  const data = document.getElementById('stratTableBody')._data || STRATEGIES;
-  const strat = data[selectedStratIdx];
-  const inv = investments.find(i => i.id === currentInvId);
-  if (inv) {
-    inv.strategy = strat;
-    inv.clientFee = strat.minFee;   // default to min fee; advisor can adjust
-    // update calc inputs
-    calcState.newmin = strat.mgr;
-    document.getElementById('newmin').value = strat.mgr;
-  }
-  renderInvestments();
-  closeStratModal();
-}
-
-// ═══════════════════════════════════════════════════════
-//  CREATE HOUSEHOLD MODAL
-// ═══════════════════════════════════════════════════════
-
-function openCreateHHModal()  { document.getElementById('createHHModal').classList.add('open'); }
-function closeCreateHHModal() { document.getElementById('createHHModal').classList.remove('open'); }
-
-// ═══════════════════════════════════════════════════════
-//  GENERATIONAL PLACEHOLDER
-// ═══════════════════════════════════════════════════════
-
-function addGenMember() {
-  alert('In the full Salesforce app, this opens a household search to add a member to the generational group.');
-}
-
-// ═══════════════════════════════════════════════════════
-//  CALC INPUT SYNC
-// ═══════════════════════════════════════════════════════
-
-function syncInput(field, val)  { calcState[field] = parseFloat(val) || 0; }
-function syncCheck(field, val)  { calcState[field] = val; }
-function updateCalcInput(f, v)  { syncInput(f, v); }
-
-// ═══════════════════════════════════════════════════════
-//  FEE HELPERS (mirrors LWC)
-// ═══════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════════════════
+// FEE HELPERS
+// ═════════════════════════════════════════════════════════════════════════════
+const safeDiv = v => v === 0 ? 1 : v;
 
 function smaFixedFee(a) {
-  if (a < 250000)  return a * 75 / 10000;
+  if (a < 250000)  return a * 75  / 10000;
   if (a < 1000000) return 1875  + (a - 250000)  * 60 / 10000;
   if (a < 2000000) return 6375  + (a - 1000000) * 50 / 10000;
   if (a < 4000000) return 11375 + (a - 2000000) * 40 / 10000;
@@ -988,86 +656,380 @@ function overheadFee(a) {
   return 11875 + (a - 7000000) * 9 / 10000;
 }
 
-// ═══════════════════════════════════════════════════════
-//  CALCULATE
-// ═══════════════════════════════════════════════════════
-
-function calculate() {
-  const { acctAUM, hhAUMTotal, acFees, newmin, grossRevenue, netRevenue, isSMAFixed } = calcState;
-
-  if (!acctAUM) { alert('Please enter Account AUM.'); return; }
-  if (!hhAUMTotal) { alert('Please enter HH Advisory AUM Total.'); return; }
-
-  const hhAUM = hhAUMTotal;
-
-  const overhead_Acct = overheadFee(acctAUM);
-  const hhBaseFee     = isSMAFixed ? smaFixedFee(hhAUM) : advFee(hhAUM);
-  const hhBaseBP      = (hhBaseFee / (hhAUM||1)) * 10000;
-
-  const acctMinDollar = isSMAFixed ? smaFixedFee(acctAUM) : advFee(acctAUM);
-  const acctMinBP     = (acctMinDollar / (acctAUM||1)) * 10000;
-
-  const acctOverheadBP = (overhead_Acct / (hhAUM||1)) * 10000;
-  const hhOverheadBP   = (overheadFee(hhAUM) / (hhAUM||1)) * 10000;
-  const overheadDelta  = acctOverheadBP - hhOverheadBP;
-  const minWithHH      = hhBaseBP - overheadDelta;
-
-  const qualifies = hhAUM >= 1000000;
-
-  const partAcct = Math.max(0, acctMinBP + newmin - acFees);
-  const partHH   = Math.max(0, minWithHH  + newmin - acFees);
-
-  const participationMinFee = qualifies ? minWithHH   : acctMinBP;
-  const estParticipation    = qualifies ? partHH      : partAcct;
-  const participationGap    = qualifies ? partHH      : partAcct;
-
-  let payRate;
-  if (participationGap > 50)      payRate = 0;
-  else if (participationGap <= 0) payRate = 0.5;
-  else payRate = 0.5 - (participationGap / 100);
-
-  const changeInNet = Math.round(((payRate * grossRevenue) - netRevenue) * 100) / 100;
-
-  const results = [
-    { label: 'Qualifies for HH Discount', value: qualifies ? 'Yes' : 'No',
-      cls: qualifies ? 'result-ok' : 'result-warn' },
-    { label: 'Acct Min (No HH Discount)', value: acctMinBP.toFixed(2) + ' bps',         cls: '' },
-    { label: 'Min With HH Discounts',     value: minWithHH.toFixed(2)  + ' bps',         cls: '' },
-    { label: 'Participation Minimum Fee', value: participationMinFee.toFixed(2) + ' bps',cls: '' },
-    { label: 'Estimated Participation',   value: estParticipation.toFixed(2) + ' bps',
-      cls: estParticipation > 0 ? 'result-warn' : 'result-ok' },
-    { label: 'Participation Pay Rate',    value: (payRate*100).toFixed(1) + '%',
-      cls: payRate === 0 ? 'result-bad' : 'result-ok' },
-    { label: 'Change in Net',             value: '$' + changeInNet.toLocaleString('en-US',{minimumFractionDigits:2}),
-      cls: changeInNet < 0 ? 'result-bad' : 'result-ok' },
-  ];
-
-  const grid = document.getElementById('resultsGrid');
-  grid.innerHTML = results.map(r => `
-    <div class="result-item ${r.cls}">
-      <div class="result-label">${r.label}</div>
-      <div class="result-value">${r.value}</div>
-    </div>`).join('');
-  document.getElementById('resultsCard').style.display = '';
-  document.getElementById('resultsCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+function calcRow(aum, clientFeePct, managerFeeBps, isSMA, hhAUMTotal) {
+  const managerFeePct  = managerFeeBps / 100;
+  const acctMinDollar  = isSMA ? smaFixedFee(aum) : advFee(aum);
+  const acctMinBP      = (acctMinDollar / safeDiv(aum)) * 10000;
+  const hhBaseFee      = isSMA ? smaFixedFee(hhAUMTotal) : advFee(hhAUMTotal);
+  const hhBaseBP       = (hhBaseFee / safeDiv(hhAUMTotal)) * 10000;
+  const acctOverheadBP = (overheadFee(aum)        / safeDiv(hhAUMTotal)) * 10000;
+  const hhOverheadBP   = (overheadFee(hhAUMTotal)  / safeDiv(hhAUMTotal)) * 10000;
+  const minWithHHbp    = hhBaseBP - (acctOverheadBP - hhOverheadBP);
+  const qualifies      = hhAUMTotal >= 1500000;
+  const minAdvisorBP   = qualifies ? minWithHHbp : acctMinBP;
+  const minAdvisorPct  = minAdvisorBP / 100;
+  const minTotalPct    = minAdvisorPct + managerFeePct;
+  const gap            = Math.max(0, minAdvisorBP + managerFeeBps - clientFeePct * 100);
+  const payRate        = gap > 50 ? 0 : (0.5 - gap / 100);
+  return { minAdvisorPct, managerFeePct, minTotalPct, payRate };
 }
 
-function resetCalc() {
-  ['acctAUM','hhAUMTotal','acFees','newmin','grossRevenue','netRevenue'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  document.getElementById('isSMAFixed').checked = false;
-  Object.assign(calcState, { acctAUM:0, hhAUMTotal:0, acFees:0, newmin:0, grossRevenue:0, netRevenue:0, isSMAFixed:false });
-  document.getElementById('resultsCard').style.display = 'none';
+const MANAGER_FEE_MAP = {
+  'Conservative Income': 8, 'Moderate Income': 8, 'Aggressive Income': 10,
+  'Conservative Income and Growth': 10, 'Moderate Income and Growth': 10, 'Aggressive Income and Growth': 12,
+  'Conservative Growth': 10, 'Moderate Growth': 12, 'Aggressive Growth': 12,
+};
+
+const fmtPct = v => v.toFixed(2) + '%';
+const fmtUSD = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+// ═════════════════════════════════════════════════════════════════════════════
+// STATE — independent per context, preserved when toggling
+// ═════════════════════════════════════════════════════════════════════════════
+const stdState = { hh: null, investments: [] };
+const genState = { hh: null, investments: [] };
+let activeCtx  = 'std';
+
+function activeState() { return activeCtx === 'std' ? stdState : genState; }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// TOGGLE
+// ═════════════════════════════════════════════════════════════════════════════
+function setCtx(ctx) {
+  activeCtx = ctx;
+  const isGen = ctx === 'gen';
+
+  // Sync dropdown value + color
+  const sel = document.getElementById('ctxSelect');
+  sel.value     = ctx;
+  sel.className = 'ctx-select ctx-std';
+
+  // Search label + placeholder
+  document.getElementById('searchLabel').textContent =
+    isGen ? 'Generational Household Search' : 'Household Search';
+  document.getElementById('hhSearch').placeholder =
+    isGen ? 'Type a generational household name…' : 'Type a household name…';
+
+  // Create Gen HH button
+  document.getElementById('createGHHWrap').hidden = !isGen;
+
+  // Restore the active context's search field value and clear button
+  const st = activeState();
+  document.getElementById('hhSearch').value  = st.hh ? st.hh.name : '';
+  document.getElementById('clearBtn').hidden = !st.hh;
+  document.getElementById('dropdown').hidden = true;
+
+  // Re-render whatever is loaded for this context
+  if (st.hh) {
+    renderCurrent();
+  } else {
+    document.getElementById('hhSummary').hidden = true;
+    document.getElementById('existingArea').innerHTML = isGen
+      ? `<div class="empty-state"><div class="empty-icon">👨‍👩‍👧‍👦</div><p>Create or search a Generational Household above to load combined accounts.</p></div>`
+      : `<div class="empty-state"><div class="empty-icon">🔍</div><p>Search for a household above to load existing accounts.</p></div>`;
+    document.getElementById('newInvBody').innerHTML =
+      `<tr><td colspan="11" class="empty-new">No investments added yet — click <strong>+ Add Investment</strong> to begin.</td></tr>`;
+  }
 }
 
-// ═══════════════════════════════════════════════════════
-//  UTILS
-// ═══════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════════════════
+// SEARCH
+// ═════════════════════════════════════════════════════════════════════════════
+function onSearchInput() {
+  const q  = document.getElementById('hhSearch').value.trim().toLowerCase();
+  const dd = document.getElementById('dropdown');
+  if (!q) { dd.hidden = true; return; }
 
-function fmt(n) {
-  return '$' + Number(n).toLocaleString('en-US');
+  const source  = activeCtx === 'std' ? HOUSEHOLDS : generationalHHs;
+  const matches = source.filter(h => h.name.toLowerCase().includes(q));
+  if (!matches.length) { dd.hidden = true; return; }
+
+  // Build items using data attribute — no inline onclick
+  dd.innerHTML = matches.map(h => {
+    const tot = h.accounts.reduce((s, a) => s + a.aum, 0);
+    const meta = activeCtx === 'gen'
+      ? `${h.memberNames.join(' + ')} &nbsp;·&nbsp; ${fmtUSD(tot)} AUM`
+      : `${h.accounts.length} account(s) &nbsp;·&nbsp; ${fmtUSD(tot)} AUM`;
+    return `<div class="dropdown-item" data-hh-id="${h.id}">
+      <div class="hh-name">${h.name}</div>
+      <div class="hh-meta">${meta}</div>
+    </div>`;
+  }).join('');
+
+  const input = document.getElementById('hhSearch');
+  const r = input.getBoundingClientRect();
+  dd.style.top   = r.bottom + 'px';
+  dd.style.left  = r.left   + 'px';
+  dd.style.width = r.width  + 'px';
+  dd.hidden = false;
+}
+
+function closeDropdown() { document.getElementById('dropdown').hidden = true; }
+
+// Event delegation: single listener on the dropdown handles all item clicks
+document.getElementById('dropdown').addEventListener('click', function(e) {
+  const item = e.target.closest('[data-hh-id]');
+  if (!item) return;
+  selectHH(item.dataset.hhId);
+});
+
+// Close dropdown on outside click
+document.addEventListener('click', function(e) {
+  const input = document.getElementById('hhSearch');
+  const dd    = document.getElementById('dropdown');
+  if (!input.contains(e.target) && !dd.contains(e.target)) closeDropdown();
+});
+
+function selectHH(id) {
+  const source = activeCtx === 'std' ? HOUSEHOLDS : generationalHHs;
+  const hh = source.find(h => h.id === id);
+  if (!hh) return;
+  const st = activeState();
+  st.hh = hh;
+  st.investments = [];
+  document.getElementById('hhSearch').value      = hh.name;
+  document.getElementById('dropdown').hidden     = true;
+  document.getElementById('clearBtn').hidden     = false;
+  document.getElementById('additionalAUM').value = '0';
+  renderCurrent();
+}
+
+function clearSelection() {
+  const st = activeState();
+  st.hh = null;
+  st.investments = [];
+  document.getElementById('hhSearch').value  = '';
+  document.getElementById('clearBtn').hidden = true;
+  document.getElementById('additionalAUM').value = '0';
+  document.getElementById('hhSummary').hidden = true;
+  const isGen = activeCtx === 'gen';
+  document.getElementById('existingArea').innerHTML = isGen
+    ? `<div class="empty-state"><div class="empty-icon">👨‍👩‍👧‍👦</div><p>Create or search a Generational Household above to load combined accounts.</p></div>`
+    : `<div class="empty-state"><div class="empty-icon">🔍</div><p>Search for a household above to load existing accounts.</p></div>`;
+  document.getElementById('newInvBody').innerHTML =
+    `<tr><td colspan="11" class="empty-new">No investments added yet — click <strong>+ Add Investment</strong> to begin.</td></tr>`;
+  document.getElementById('hhSearch').focus();
+}
+
+function recalcIfLoaded() { if (activeState().hh) renderCurrent(); }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// RENDER
+// ═════════════════════════════════════════════════════════════════════════════
+function totalAUM() {
+  const st   = activeState();
+  const base = st.hh.accounts.reduce((s, a) => s + a.aum, 0);
+  const inv  = st.investments.reduce((s, i) => s + i.aum, 0);
+  const addl = parseFloat(document.getElementById('additionalAUM').value) || 0;
+  return base + inv + addl;
+}
+
+function renderCurrent() {
+  const st    = activeState();
+  const hhAUM = totalAUM();
+  const qual  = hhAUM >= 1500000;
+  const isGen = activeCtx === 'gen';
+
+  // Summary bar
+  document.getElementById('sumHHLabel').textContent = isGen ? 'Generational HH:' : 'Household:';
+  document.getElementById('sumName').textContent    = st.hh.name;
+  document.getElementById('sumAUM').textContent     = fmtUSD(hhAUM);
+  document.getElementById('sumAccts').textContent   = st.hh.accounts.length;
+  const membersWrap = document.getElementById('sumMembersWrap');
+  membersWrap.hidden = !isGen;
+  if (isGen) document.getElementById('sumMembers').textContent = st.hh.memberNames.length;
+  const qEl = document.getElementById('sumQual');
+  qEl.textContent = qual ? 'Yes (≥ $1.5M)' : 'No (< $1.5M)';
+  qEl.className   = qual ? 'qual-yes' : 'qual-no';
+  document.getElementById('hhSummary').hidden = false;
+
+  // Existing accounts table
+  const accountRows = st.hh.accounts.map(a => {
+    const { minAdvisorPct, managerFeePct, minTotalPct, payRate } = calcRow(
+      a.aum, a.clientFeePct, a.managerFeeBps, a.isSMA, hhAUM
+    );
+    const feeClass = a.clientFeePct < minTotalPct ? 'warn' : 'ok';
+    const payClass = payRate === 0 ? 'bad' : payRate < 0.4 ? 'warn' : 'ok';
+    return `<tr>
+      <td>${a.name}${a.isSMA ? '<span class="tag-sma">SMA</span>' : ''}
+          ${isGen ? `<span class="tag-hh">${a._hhName}</span>` : ''}</td>
+      <td>${a.program}</td><td>${a.manager}</td><td>${a.strategy}</td>
+      <td class="num">${fmtUSD(a.aum)}</td>
+      <td class="num">${fmtPct(minAdvisorPct)}</td>
+      <td class="num">${fmtPct(managerFeePct)}</td>
+      <td class="num">${fmtPct(minTotalPct)}</td>
+      <td class="num ${feeClass}">${fmtPct(a.clientFeePct)}</td>
+      <td class="num ${payClass}">${(payRate * 100).toFixed(1)}%</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('existingArea').innerHTML = `
+    <div class="table-wrap"><table class="table-existing" style="min-width:900px;">
+      <thead><tr>
+        <th>Name</th><th>Program</th><th>Manager</th><th>Strategy</th>
+        <th>Account Value</th><th>Min Advisor Fee</th><th>Manager Fee</th>
+        <th>Min Total Fee</th><th>Client Fee</th><th>Max Payout</th>
+      </tr></thead>
+      <tbody>${accountRows}</tbody>
+    </table></div>`;
+
+  // New investments
+  document.getElementById('newInvBody').innerHTML =
+    renderInvRows(st.investments, hhAUM);
+}
+
+function renderInvRows(investments, hhAUM) {
+  if (investments.length === 0)
+    return `<tr><td colspan="11" class="empty-new">No investments added yet — click <strong>+ Add Investment</strong> to begin.</td></tr>`;
+  return investments.map((inv, idx) => {
+    const { minAdvisorPct, managerFeePct, minTotalPct, payRate } = calcRow(
+      inv.aum, inv.clientFeePct, inv.managerFeeBps, false, hhAUM
+    );
+    const feeClass = inv.clientFeePct < minTotalPct ? 'warn' : 'ok';
+    const payClass = payRate === 0 ? 'bad' : payRate < 0.4 ? 'warn' : 'ok';
+    return `<tr>
+      <td>${inv.name}</td><td>Advisory</td><td>—</td><td>${inv.objective}</td>
+      <td class="num">${fmtUSD(inv.aum)}</td>
+      <td class="num">${fmtPct(minAdvisorPct)}</td>
+      <td class="num">${fmtPct(managerFeePct)}</td>
+      <td class="num">${fmtPct(minTotalPct)}</td>
+      <td class="num ${feeClass}">${fmtPct(inv.clientFeePct)}</td>
+      <td class="num ${payClass}">${(payRate * 100).toFixed(1)}%</td>
+      <td><button class="btn-del" onclick="removeInvestment(${idx})" title="Remove">&#x2715;</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ADD INVESTMENT MODAL
+// ═════════════════════════════════════════════════════════════════════════════
+function openInvModal() {
+  document.getElementById('m-name').value      = '';
+  document.getElementById('m-amount').value    = '';
+  document.getElementById('m-objective').value = '';
+  document.getElementById('m-clientfee').value = '';
+  document.getElementById('invModalOverlay').hidden = false;
+  document.getElementById('m-name').focus();
+}
+function closeInvModal() { document.getElementById('invModalOverlay').hidden = true; }
+function closeInvModalOnOverlay(e) { if (e.target === document.getElementById('invModalOverlay')) closeInvModal(); }
+
+function submitInvestment() {
+  const name      = document.getElementById('m-name').value.trim();
+  const amount    = parseFloat(document.getElementById('m-amount').value) || 0;
+  const objective = document.getElementById('m-objective').value;
+  const feeRaw    = document.getElementById('m-clientfee').value;
+
+  if (!name)       { alert('Please enter a name.'); return; }
+  if (amount <= 0) { alert('Please enter a valid investment amount.'); return; }
+  if (!objective)  { alert('Please select an investment objective.'); return; }
+
+  const clientFeePct  = feeRaw !== '' ? parseFloat(feeRaw) : 0;
+  const managerFeeBps = MANAGER_FEE_MAP[objective] ?? 10;
+  activeState().investments.push({ name, aum: amount, objective, clientFeePct, managerFeeBps });
+  closeInvModal();
+  if (activeState().hh) renderCurrent();
+}
+
+function removeInvestment(idx) {
+  activeState().investments.splice(idx, 1);
+  if (activeState().hh) renderCurrent();
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CREATE GENERATIONAL HH MODAL
+// ═════════════════════════════════════════════════════════════════════════════
+let ghhSelected = new Set();
+
+function openCreateGHH() {
+  ghhSelected = new Set();
+  document.getElementById('ghh-name').value      = '';
+  document.getElementById('ghh-filter').value    = '';
+  document.getElementById('ghh-attest').checked  = false;
+  document.getElementById('ghh-submitBtn').disabled = true;
+  renderGHHChecklist();
+  updateGHHSummary();
+  document.getElementById('createGHHOverlay').hidden = false;
+}
+function closeCreateGHH() { document.getElementById('createGHHOverlay').hidden = true; }
+function closeCreateGHHOnOverlay(e) { if (e.target === document.getElementById('createGHHOverlay')) closeCreateGHH(); }
+
+function renderGHHChecklist() {
+  const q        = document.getElementById('ghh-filter').value.trim().toLowerCase();
+  const filtered = q ? HOUSEHOLDS.filter(h => h.name.toLowerCase().includes(q)) : HOUSEHOLDS;
+  document.getElementById('ghh-checklist').innerHTML = filtered.map(h => {
+    const tot = h.accounts.reduce((s, a) => s + a.aum, 0);
+    return `<label class="hh-check-item">
+      <input type="checkbox" ${ghhSelected.has(h.id) ? 'checked' : ''} onchange="toggleGHH('${h.id}', this.checked)">
+      <div>
+        <div class="ci-name">${h.name}</div>
+        <div class="ci-meta">${h.accounts.length} account(s) &nbsp;·&nbsp; ${fmtUSD(tot)} AUM</div>
+      </div>
+    </label>`;
+  }).join('') || '<div style="padding:16px;text-align:center;color:#54698d;">No households match.</div>';
+}
+
+function toggleGHH(id, checked) {
+  checked ? ghhSelected.add(id) : ghhSelected.delete(id);
+  updateGHHSummary();
+  updateCreateSubmitBtn();
+}
+
+function updateGHHSummary() {
+  const selected = [...ghhSelected].map(id => HOUSEHOLDS.find(h => h.id === id));
+  const totalAUM = selected.reduce((s, h) => s + h.accounts.reduce((ss, a) => ss + a.aum, 0), 0);
+  document.getElementById('ghh-selCount').textContent = selected.length;
+  const el = document.getElementById('ghh-selAUM');
+  el.textContent = fmtUSD(totalAUM);
+  el.className   = 'ghh-aum-highlight ' + (totalAUM >= 1500000 ? 'qualifies' : 'not-yet');
+}
+
+function updateCreateSubmitBtn() {
+  document.getElementById('ghh-submitBtn').disabled =
+    !(document.getElementById('ghh-attest').checked && ghhSelected.size >= 1);
+}
+
+function showErrorModal(msg) {
+  document.getElementById('errorModalMsg').textContent = msg;
+  document.getElementById('errorModalOverlay').hidden = false;
+}
+function closeErrorModal() {
+  document.getElementById('errorModalOverlay').hidden = true;
+}
+
+function submitCreateGHH() {
+  const selectedHHs = [...ghhSelected].map(id => HOUSEHOLDS.find(h => h.id === id));
+  if (!selectedHHs.length) return;
+
+  const combinedAUM = selectedHHs.reduce((s, h) => s + h.accounts.reduce((ss, a) => ss + a.aum, 0), 0);
+  if (combinedAUM < 1500000) {
+    showErrorModal('Total Generational Household AUM must exceed $1,500,000.');
+    return;
+  }
+
+  const allAccounts = selectedHHs.flatMap(h => h.accounts.map(a => ({ ...a, _hhName: h.name })));
+  const memberNames = selectedHHs.map(h => h.name);
+  const typedName   = document.getElementById('ghh-name').value.trim();
+  const autoName    = memberNames.slice(0, 2).join(' + ')
+                      + (memberNames.length > 2 ? ` (+${memberNames.length - 2} more)` : '')
+                      + ' — Generational';
+  const ghh = {
+    id: 'GHH' + String(ghhIdCounter++).padStart(3, '0'),
+    name: typedName || autoName,
+    memberNames,
+    accounts: allAccounts,
+  };
+
+  generationalHHs.push(ghh);
+  closeCreateGHH();
+
+  // Switch to gen context and auto-load the new GHH
+  if (activeCtx !== 'gen') setCtx('gen');
+  genState.hh = ghh;
+  genState.investments = [];
+  document.getElementById('hhSearch').value  = ghh.name;
+  document.getElementById('clearBtn').hidden = false;
+  renderCurrent();
 }
 </script>
 </body>
