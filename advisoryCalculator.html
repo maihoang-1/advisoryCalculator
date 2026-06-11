@@ -111,17 +111,14 @@ body {
   background: #fff; border: 1px solid #dddbda;
   border-top: none; border-radius: 0 0 6px 6px;
   z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,.18);
-  display: none; flex-direction: column;
-  max-height: 360px;
+  display: none;
   min-width: 420px;
-  overflow: hidden;
 }
-.search-dropdown.open { display: flex; }
-.dd-list { overflow-y: auto; flex: 1; }
+.search-dropdown.open { display: block; }
+.dd-list { max-height: 300px; overflow-y: auto; }
 .dd-footer {
-  padding: 10px 14px; border-top: 1px solid #e8e8e8;
+  padding: 10px 14px; border-top: 2px solid #dddbda;
   background: #f8f9fb; display: flex; justify-content: flex-end; gap: 8px;
-  flex-shrink: 0;
 }
 .dd-item {
   padding: 12px 14px; cursor: pointer;
