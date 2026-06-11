@@ -1049,11 +1049,10 @@ function genSelectHH(id) {
     const hh = HOUSEHOLDS.find(h => h.id === id);
     if (hh) g.selected.push(hh);
   }
-  g.searchVal = '';
   g.createError = '';
   render();
   const el = document.getElementById('genSearch');
-  if (el) el.focus();
+  if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
 }
 
 function genRemoveHH(id) {
