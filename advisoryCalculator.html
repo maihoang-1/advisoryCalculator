@@ -111,14 +111,17 @@ body {
   background: #fff; border: 1px solid #dddbda;
   border-top: none; border-radius: 0 0 6px 6px;
   z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,.18);
-  display: none; max-height: 520px; overflow-y: auto;
+  display: none; flex-direction: column;
+  max-height: 360px;
   min-width: 420px;
+  overflow: hidden;
 }
-.search-dropdown.open { display: block; }
+.search-dropdown.open { display: flex; }
+.dd-list { overflow-y: auto; flex: 1; }
 .dd-footer {
   padding: 10px 14px; border-top: 1px solid #e8e8e8;
   background: #f8f9fb; display: flex; justify-content: flex-end; gap: 8px;
-  position: sticky; bottom: 0;
+  flex-shrink: 0;
 }
 .dd-item {
   padding: 12px 14px; cursor: pointer;
@@ -903,19 +906,21 @@ function renderGenerational() {
         <div class="search-dropdown ${mQuery ? 'open' : ''}" id="genDropdown">
           ${mQuery
             ? mMatches.length
-              ? `${mMatches.map(h => {
-                  const checked = g.pendingIds.has(h.id);
-                  return `<div class="dd-item-compact ${checked?'checked-row':''}"
-                               onclick="genTogglePending(${h.id},event)">
-                    <input type="checkbox" ${checked?'checked':''}
-                           onclick="event.stopPropagation()"
-                           onchange="genTogglePending(${h.id},event)" />
-                    <div class="dd-item-info">
-                      <span class="dd-name">${escHtml(h.name)}</span>
-                      <span class="dd-aum-inline">${fmtUSD(h.aum)}</span>
-                    </div>
-                  </div>`;
-                }).join('')}
+              ? `<div class="dd-list">
+                  ${mMatches.map(h => {
+                    const checked = g.pendingIds.has(h.id);
+                    return `<div class="dd-item-compact ${checked?'checked-row':''}"
+                                 onclick="genTogglePending(${h.id},event)">
+                      <input type="checkbox" ${checked?'checked':''}
+                             onclick="event.stopPropagation()"
+                             onchange="genTogglePending(${h.id},event)" />
+                      <div class="dd-item-info">
+                        <span class="dd-name">${escHtml(h.name)}</span>
+                        <span class="dd-aum-inline">${fmtUSD(h.aum)}</span>
+                      </div>
+                    </div>`;
+                  }).join('')}
+                </div>
                 <div class="dd-footer">
                   <span style="font-size:.75rem;color:#54698d;align-self:center">
                     ${g.pendingIds.size} selected
@@ -927,7 +932,7 @@ function renderGenerational() {
                     Add Selected
                   </button>
                 </div>`
-              : `<div class="dd-item" style="color:#706e6b;cursor:default">No households found</div>`
+              : `<div class="dd-list"><div class="dd-item" style="color:#706e6b;cursor:default">No households found</div></div>`
             : ''}
         </div>
       </div>
