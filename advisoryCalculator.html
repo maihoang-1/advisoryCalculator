@@ -415,12 +415,12 @@ const app = {
   gen: {
     hhName: '',
     searchVal: '',
-    pendingIds: new Set(), // checked but not yet added from dropdown
     selected: [],
-    attested: false,
     created: false,
     lookupVal: '',
     viewingId: null,
+    createError: '',
+    showAttestation: false,
   },
 };
 
@@ -810,10 +810,10 @@ function renderGenerational() {
   // ── Main form ──────────────────────────────────────────
   const totalAUM    = g.selected.reduce((s,h)=>s+h.aum, 0);
   const meetsMin    = totalAUM >= GEN_THRESHOLD;
-  const canCreate   = g.attested && g.selected.length >= 2 && g.hhName.trim();
+  const canCreate   = g.selected.length >= 2 && g.hhName.trim();
   const selectedIds = new Set(g.selected.map(h=>h.id));
 
-  // Member-search dropdown
+  // Member-search dropdown — show all remaining households when query present
   const mQuery   = (g.searchVal||'').toLowerCase().trim();
   const mMatches = mQuery
     ? HOUSEHOLDS.filter(h => h.name.toLowerCase().includes(mQuery) && !selectedIds.has(h.id))
@@ -826,7 +826,45 @@ function renderGenerational() {
     ? saved.filter(h => h.name.toLowerCase().includes(lQuery))
     : [];
 
+  // Attestation modal
+  const attestModal = g.showAttestation ? `
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;display:flex;align-items:center;justify-content:center;padding:1rem">
+    <div style="background:#fff;border-radius:6px;width:520px;max-width:100%;box-shadow:0 12px 40px rgba(0,0,0,.3);overflow:hidden">
+      <div style="background:#0070d2;color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-weight:700;font-size:.9375rem">Confirm Generational Household</span>
+        <button onclick="app.gen.showAttestation=false;render()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1">&#215;</button>
+      </div>
+      <div style="padding:20px">
+        <p style="font-size:.875rem;color:#181818;margin-bottom:1rem;line-height:1.5">
+          By creating this Generational Household, I confirm that the following households
+          qualify as a generational household unit under firm policy, that all relationships
+          have been verified, required documentation is on file, and I am authorized to
+          establish this grouping. This designation affects fee calculations and household
+          discount eligibility.
+        </p>
+        <p style="font-size:.75rem;font-weight:700;color:#16325c;margin-bottom:.5rem">Households being combined:</p>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:1rem">
+          ${g.selected.map(h=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .75rem;background:#f4f6f9;border-radius:4px">
+            <span style="font-weight:600;font-size:.8125rem">${escHtml(h.name)}</span>
+            <span style="font-size:.75rem;color:#54698d">${fmtUSD(h.aum)} AUM</span>
+          </div>`).join('')}
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:.5rem .75rem;background:#e8f4e8;border-radius:4px;margin-bottom:.25rem">
+          <span style="font-size:.8125rem;font-weight:700;color:#2e844a">Combined AUM</span>
+          <span style="font-size:.8125rem;font-weight:700;color:#2e844a">${fmtUSD(totalAUM)}</span>
+        </div>
+        <p style="font-size:.7rem;color:#706e6b;font-style:italic">Final attestation language will be provided by Legal.</p>
+      </div>
+      <div style="padding:12px 18px;border-top:1px solid #e8e8e8;display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-neutral" onclick="app.gen.showAttestation=false;render()">Cancel</button>
+        <button class="btn btn-success" onclick="genConfirmCreate()">&#9989; Confirm &amp; Create</button>
+      </div>
+    </div>
+  </div>` : '';
+
   return `
+  ${attestModal}
   <div style="display:flex;gap:1.5rem;align-items:flex-start">
   <div style="flex:1;min-width:0">
 
@@ -889,12 +927,19 @@ function renderGenerational() {
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
         <button class="btn btn-success" style="white-space:nowrap"
-                onclick="genCreate()" ${canCreate ? '' : 'disabled style="opacity:.45;cursor:not-allowed"'}>
+                onclick="genCreate()" ${canCreate ? '' : 'disabled'}>
           + Create Household
         </button>
         ${g.createError ? `<span style="color:#c23934;font-size:.75rem;font-weight:600;max-width:220px;text-align:right">${escHtml(g.createError)}</span>` : ''}
       </div>
     </div>
+
+    <!-- AUM error banner (shows after failed create attempt) -->
+    ${g.createError ? `
+    <div style="background:#fde8e8;border:1px solid #ea7a7a;border-radius:4px;padding:.625rem .875rem;margin-bottom:.75rem;display:flex;align-items:center;gap:8px">
+      <span style="font-size:1rem">&#9888;&#65039;</span>
+      <span style="font-size:.8125rem;color:#ba0517;font-weight:600">${escHtml(g.createError)}</span>
+    </div>` : ''}
 
     <div class="field">
       <div class="search-wrap">
@@ -909,32 +954,16 @@ function renderGenerational() {
           ${mQuery
             ? mMatches.length
               ? `<div class="dd-list">
-                  ${mMatches.map(h => {
-                    const checked = g.pendingIds.has(h.id);
-                    return `<div class="dd-item-compact ${checked?'checked-row':''}"
-                                 onclick="genTogglePending(${h.id},event)">
-                      <input type="checkbox" ${checked?'checked':''}
-                             onclick="event.stopPropagation()"
-                             onchange="genTogglePending(${h.id},event)" />
+                  ${mMatches.map(h => `
+                    <div class="dd-item" onclick="genSelectHH(${h.id})">
                       <div class="dd-item-info">
-                        <span class="dd-name">${escHtml(h.name)}</span>
-                        <span class="dd-aum-inline">${fmtUSD(h.aum)}</span>
+                        <div class="dd-name">${escHtml(h.name)}</div>
+                        <div class="dd-aum">${fmtUSD(h.aum)} advisory AUM &nbsp;·&nbsp; ${h.accounts} account(s)</div>
                       </div>
-                    </div>`;
-                  }).join('')}
-                </div>
-                <div class="dd-footer">
-                  <span style="font-size:.75rem;color:#54698d;align-self:center">
-                    ${g.pendingIds.size} selected
-                  </span>
-                  <button class="btn btn-neutral" style="height:28px;font-size:.75rem"
-                          onclick="genClearPending()">Clear</button>
-                  <button class="btn btn-brand" style="height:28px;font-size:.75rem"
-                          onclick="genAddPending()" ${g.pendingIds.size===0?'disabled':''}>
-                    Add Selected
-                  </button>
+                      <span style="font-size:.8rem;color:#0070d2;font-weight:700;white-space:nowrap">+ Add</span>
+                    </div>`).join('')}
                 </div>`
-              : `<div class="dd-list"><div class="dd-item" style="color:#706e6b;cursor:default">No households found</div></div>`
+              : `<div class="dd-item" style="color:#706e6b;cursor:default">No households found</div>`
             : ''}
         </div>
       </div>
@@ -954,7 +983,7 @@ function renderGenerational() {
         </div>`
       : `<p class="empty-hint">No households selected yet — search above to add members.</p>`}
 
-    <!-- AUM summary + threshold -->
+    <!-- AUM summary bar -->
     ${g.selected.length ? `
     <div class="aum-bar">
       <div class="aum-bar-item">
@@ -970,39 +999,12 @@ function renderGenerational() {
         <span class="aum-bar-value">${fmtUSD(GEN_THRESHOLD)}</span>
       </div>
     </div>
-    ${meetsMin
-      ? `<div class="threshold-msg threshold-ok">
-           <span class="threshold-icon">&#9989;</span>
-           Combined AUM of ${fmtUSD(totalAUM)} meets the ${fmtUSD(GEN_THRESHOLD)} threshold.
-         </div>`
-      : `<div class="threshold-msg threshold-error">
-           <span class="threshold-icon">&#9888;&#65039;</span>
-           Combined AUM of ${fmtUSD(totalAUM)} is below the ${fmtUSD(GEN_THRESHOLD)} threshold —
-           need ${fmtUSD(GEN_THRESHOLD - totalAUM)} more to proceed.
-         </div>`}
-    ` : ''}
-
-    <!-- Attestation (appears once 2+ members selected) -->
-    ${g.selected.length >= 2 ? `
-    <hr class="divider" />
-    <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.75rem">3. Attestation</p>
-    <div class="attestation-box">
-      <p class="attestation-text">
-        By creating this Generational Household, I attest that the households listed above
-        qualify as a generational household unit under firm policy. I confirm that the
-        relationships between these households have been verified, that all required
-        documentation is on file, and that I am authorized to establish this grouping.
-        This designation affects fee calculations and household discount eligibility.
-        <br/><br/>
-        <em style="color:#706e6b;font-size:.75rem">Final attestation language will be provided by Legal.</em>
-      </p>
-      <label class="attestation-check">
-        <input type="checkbox" ${g.attested?'checked':''}
-               onchange="app.gen.attested=this.checked;render()" />
-        <span>I have read and agree to the above attestation statement.</span>
-      </label>
+    <div class="threshold-msg ${meetsMin ? 'threshold-ok' : 'threshold-error'}">
+      <span class="threshold-icon">${meetsMin ? '&#9989;' : '&#9888;&#65039;'}</span>
+      ${meetsMin
+        ? `Combined AUM of ${fmtUSD(totalAUM)} meets the ${fmtUSD(GEN_THRESHOLD)} threshold.`
+        : `Combined AUM of ${fmtUSD(totalAUM)} is ${fmtUSD(GEN_THRESHOLD - totalAUM)} short of the ${fmtUSD(GEN_THRESHOLD)} threshold.`}
     </div>
-
     ` : ''}
 
   </div>
@@ -1028,7 +1030,6 @@ function getBelowThresholdHouseholds() {
 
 function genSearchInput(val) {
   app.gen.searchVal = val;
-  if (!val.trim()) app.gen.pendingIds = new Set();
   render();
   const el = document.getElementById('genSearch');
   if (el) { el.focus(); el.setSelectionRange(val.length, val.length); }
@@ -1041,52 +1042,43 @@ function genLookupInput(val) {
   if (el) { el.focus(); el.setSelectionRange(val.length, val.length); }
 }
 
-function genTogglePending(id, e) {
-  if (e) e.stopPropagation();
-  const p = app.gen.pendingIds;
-  p.has(id) ? p.delete(id) : p.add(id);
-  render();
-  const el = document.getElementById('genSearch');
-  if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
-}
-
-function genAddPending() {
+// Click a household in the dropdown → immediately add it to the selected list
+function genSelectHH(id) {
   const g = app.gen;
-  const selectedIds = new Set(g.selected.map(h=>h.id));
-  g.pendingIds.forEach(id => {
-    if (!selectedIds.has(id)) {
-      const hh = HOUSEHOLDS.find(h=>h.id===id);
-      if (hh) g.selected.push(hh);
-    }
-  });
-  g.pendingIds = new Set();
+  if (!g.selected.find(h => h.id === id)) {
+    const hh = HOUSEHOLDS.find(h => h.id === id);
+    if (hh) g.selected.push(hh);
+  }
   g.searchVal = '';
-  render();
-}
-
-function genClearPending() {
-  app.gen.pendingIds = new Set();
+  g.createError = '';
   render();
   const el = document.getElementById('genSearch');
-  if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+  if (el) el.focus();
 }
 
 function genRemoveHH(id) {
   app.gen.selected = app.gen.selected.filter(h=>h.id!==id);
+  app.gen.createError = '';
   render();
 }
 
 function genCreate() {
   const g = app.gen;
-  const totalAUM = g.selected.reduce((s,h)=>s+h.aum,0);
-  const meetsMin = totalAUM >= GEN_THRESHOLD;
-  if (!g.hhName.trim() || !g.attested || g.selected.length < 2) return;
-  if (!meetsMin) {
-    g.createError = `Combined AUM of ${fmtUSD(totalAUM)} is below the ${fmtUSD(GEN_THRESHOLD)} minimum threshold.`;
+  if (!g.hhName.trim() || g.selected.length < 2) return;
+  const totalAUM = g.selected.reduce((s,h)=>s+h.aum, 0);
+  if (totalAUM < GEN_THRESHOLD) {
+    g.createError = `Combined AUM of ${fmtUSD(totalAUM)} is ${fmtUSD(GEN_THRESHOLD - totalAUM)} below the ${fmtUSD(GEN_THRESHOLD)} minimum. Add more households to proceed.`;
     render();
     return;
   }
   g.createError = '';
+  g.showAttestation = true;
+  render();
+}
+
+function genConfirmCreate() {
+  const g = app.gen;
+  const totalAUM = g.selected.reduce((s,h)=>s+h.aum, 0);
   const id = 'gen_' + Date.now();
   const now = new Date().toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
   saveHousehold({
@@ -1097,6 +1089,7 @@ function genCreate() {
     createdAt: now,
   });
   g.lastCreatedId = id;
+  g.showAttestation = false;
   g.created = true;
   render();
 }
@@ -1109,7 +1102,7 @@ function genDeleteSaved(id) {
 }
 
 function genReset() {
-  app.gen = { hhName:'', searchVal:'', pendingIds:new Set(), selected:[], attested:false, created:false, lookupVal:'', viewingId:null, createError:'' };
+  app.gen = { hhName:'', searchVal:'', selected:[], created:false, lookupVal:'', viewingId:null, createError:'', showAttestation:false };
   render();
 }
 
