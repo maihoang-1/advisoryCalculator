@@ -332,6 +332,7 @@ body {
       <div class="toggle-bar">
         <button class="toggle-btn" id="tabStd" onclick="switchTab('standard')">Standard Household</button>
         <button class="toggle-btn" id="tabGen" onclick="switchTab('generational')">Generational Household</button>
+        <button class="toggle-btn" id="tabUpd" onclick="switchTab('updatelist')">&#9888; Update List</button>
       </div>
     </div>
     <div class="card-body" id="root"></div>
@@ -511,10 +512,18 @@ function runCalc(acctAUM, hhAUM, acFees, newmin, isSMA, grossRev, netRev) {
 // ═══════════════════════════════════════════════════════
 
 function render() {
-  document.getElementById('root').innerHTML =
-    app.screen === 'standard' ? renderStandard() : renderGenerational();
+  let html;
+  if (app.screen === 'standard')    html = renderStandard();
+  else if (app.screen === 'updatelist') html = renderUpdateList();
+  else                              html = renderGenerational();
+  document.getElementById('root').innerHTML = html;
   document.getElementById('tabStd').classList.toggle('active', app.screen === 'standard');
   document.getElementById('tabGen').classList.toggle('active', app.screen === 'generational');
+  document.getElementById('tabUpd').classList.toggle('active', app.screen === 'updatelist');
+  // Show badge on Update List tab if any households are below threshold
+  const belowCount = getBelowThresholdHouseholds().length;
+  const tabUpd = document.getElementById('tabUpd');
+  tabUpd.textContent = belowCount > 0 ? `⚠ Update List (${belowCount})` : '⚠ Update List';
 }
 
 function switchTab(screen) {
@@ -957,6 +966,77 @@ function renderGenerational() {
 
     ` : ''}
 
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  UPDATE LIST
+// ═══════════════════════════════════════════════════════
+
+// Returns saved generational households whose current combined AUM is below threshold.
+// Recalculates AUM from the live HOUSEHOLDS array; falls back to saved AUM if member not found.
+function getBelowThresholdHouseholds() {
+  return loadSaved().map(h => {
+    const currentAUM = h.members.reduce((sum, m) => {
+      const live = HOUSEHOLDS.find(hh => hh.id === m.id);
+      return sum + (live ? live.aum : m.aum);
+    }, 0);
+    return { ...h, currentAUM };
+  }).filter(h => h.currentAUM < GEN_THRESHOLD);
+}
+
+function renderUpdateList() {
+  const below = getBelowThresholdHouseholds();
+  const saved = loadSaved();
+
+  return `
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap">
+      <div style="background:#fff3cd;border:1px solid #f4bc25;border-radius:4px;padding:.5rem .875rem;display:flex;align-items:center;gap:8px;flex:1;min-width:220px">
+        <span style="font-size:1.1rem">&#9888;&#65039;</span>
+        <span style="font-size:.8125rem;color:#7a5200;font-weight:600">
+          Generational households listed here have dropped below the $1.5M AUM threshold and require review.
+        </span>
+      </div>
+    </div>
+
+    ${below.length === 0 ? `
+      <div style="text-align:center;padding:2.5rem 1rem;color:#706e6b">
+        <div style="font-size:2rem;margin-bottom:.5rem">&#9989;</div>
+        <p style="font-weight:700;color:#2e844a;margin-bottom:.25rem">All households are above threshold</p>
+        <p style="font-size:.75rem">
+          ${saved.length === 0
+            ? 'No saved generational households yet.'
+            : `All ${saved.length} saved generational household${saved.length !== 1 ? 's' : ''} meet the $1.5M AUM minimum.`}
+        </p>
+      </div>
+    ` : `
+      <p style="font-size:.75rem;color:#706e6b;margin-bottom:.75rem">
+        ${below.length} household${below.length !== 1 ? 's' : ''} below the
+        ${fmtUSD(GEN_THRESHOLD)} minimum — click a row to view details.
+      </p>
+      <div class="selected-list">
+        ${below.map(h => {
+          const shortfall = GEN_THRESHOLD - h.currentAUM;
+          return `
+          <div class="selected-row" style="cursor:pointer;flex-wrap:wrap;gap:6px"
+               onclick="app.gen.viewingId='${h.id}';switchTab('generational')">
+            <div class="selected-row-info" style="flex:1;min-width:180px">
+              <span class="selected-row-name">${escHtml(h.name)}</span>
+              <span class="selected-row-aum">
+                ${fmtUSD(h.currentAUM)} combined AUM &nbsp;·&nbsp; created ${h.createdAt}
+              </span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+              <span style="background:#fde8e8;color:#ba0517;font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:12px;white-space:nowrap">
+                &#8595; ${fmtUSD(shortfall)} below threshold
+              </span>
+              <span style="font-size:.75rem;color:#0070d2;font-weight:700">View ›</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    `}
   </div>`;
 }
 
