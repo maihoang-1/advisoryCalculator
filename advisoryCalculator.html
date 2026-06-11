@@ -332,7 +332,6 @@ body {
       <div class="toggle-bar">
         <button class="toggle-btn" id="tabStd" onclick="switchTab('standard')">Standard Household</button>
         <button class="toggle-btn" id="tabGen" onclick="switchTab('generational')">Generational Household</button>
-        <button class="toggle-btn" id="tabUpd" onclick="switchTab('updatelist')">&#9888; Update List</button>
       </div>
     </div>
     <div class="card-body" id="root"></div>
@@ -512,18 +511,10 @@ function runCalc(acctAUM, hhAUM, acFees, newmin, isSMA, grossRev, netRev) {
 // ═══════════════════════════════════════════════════════
 
 function render() {
-  let html;
-  if (app.screen === 'standard')    html = renderStandard();
-  else if (app.screen === 'updatelist') html = renderUpdateList();
-  else                              html = renderGenerational();
-  document.getElementById('root').innerHTML = html;
+  document.getElementById('root').innerHTML =
+    app.screen === 'standard' ? renderStandard() : renderGenerational();
   document.getElementById('tabStd').classList.toggle('active', app.screen === 'standard');
   document.getElementById('tabGen').classList.toggle('active', app.screen === 'generational');
-  document.getElementById('tabUpd').classList.toggle('active', app.screen === 'updatelist');
-  // Show badge on Update List tab if any households are below threshold
-  const belowCount = getBelowThresholdHouseholds().length;
-  const tabUpd = document.getElementById('tabUpd');
-  tabUpd.textContent = belowCount > 0 ? `⚠ Update List (${belowCount})` : '⚠ Update List';
 }
 
 function switchTab(screen) {
@@ -716,6 +707,38 @@ function stdCalculate() {
 //  GENERATIONAL HOUSEHOLD
 // ═══════════════════════════════════════════════════════
 
+function renderUpdateListColumn() {
+  const below = getBelowThresholdHouseholds();
+  return `
+  <div style="width:240px;flex-shrink:0;border-left:1px solid #e8e8e8;padding-left:1rem">
+    <p style="font-weight:700;color:#16325c;font-size:.8125rem;margin-bottom:.5rem;display:flex;align-items:center;gap:6px">
+      &#9888;&#65039; Update List
+      ${below.length > 0 ? `<span style="background:#ba0517;color:#fff;border-radius:10px;font-size:.7rem;padding:1px 6px;font-weight:700">${below.length}</span>` : ''}
+    </p>
+    ${below.length === 0 ? `
+      <p style="font-size:.75rem;color:#706e6b">No generational households below the $1.5M AUM threshold.</p>
+    ` : `
+      <p style="font-size:.7rem;color:#706e6b;margin-bottom:.5rem">
+        Click a household to review it.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${below.map(h => {
+          const shortfall = GEN_THRESHOLD - h.currentAUM;
+          return `
+          <div onclick="app.gen.viewingId='${h.id}';render()"
+               style="cursor:pointer;border:1px solid #f4bc25;border-radius:4px;padding:.5rem .625rem;background:#fffbf0">
+            <p style="font-size:.75rem;font-weight:700;color:#16325c;margin-bottom:2px">${escHtml(h.name)}</p>
+            <p style="font-size:.7rem;color:#706e6b;margin-bottom:4px">${fmtUSD(h.currentAUM)} AUM</p>
+            <span style="background:#fde8e8;color:#ba0517;font-size:.65rem;font-weight:700;padding:1px 6px;border-radius:10px">
+              &#8595; ${fmtUSD(shortfall)} below
+            </span>
+          </div>`;
+        }).join('')}
+      </div>
+    `}
+  </div>`;
+}
+
 function renderGenerational() {
   const g = app.gen;
 
@@ -724,7 +747,8 @@ function renderGenerational() {
     const saved = loadSaved().find(h => h.id === g.viewingId);
     if (!saved) { g.viewingId = null; render(); return ''; }
     return `
-    <div>
+    <div style="display:flex;gap:1.5rem;align-items:flex-start">
+    <div style="flex:1;min-width:0">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
         <div>
           <p style="font-size:1rem;font-weight:700;color:#16325c">${escHtml(saved.name)}</p>
@@ -754,6 +778,8 @@ function renderGenerational() {
       </div>
       <button class="btn btn-neutral" style="margin-top:.5rem"
               onclick="app.gen.viewingId=null;render()">&#8592; Back to Search</button>
+    </div>
+    ${renderUpdateListColumn()}
     </div>`;
   }
 
@@ -761,6 +787,8 @@ function renderGenerational() {
   if (g.created) {
     const totalAUM = g.selected.reduce((s,h)=>s+h.aum,0);
     return `
+    <div style="display:flex;gap:1.5rem;align-items:flex-start">
+    <div style="flex:1;min-width:0">
     <div class="success-banner">
       &#9989;&nbsp; <strong>${escHtml(g.hhName)}</strong> created with ${g.selected.length} member households
       and a combined AUM of ${fmtUSD(totalAUM)}.
@@ -768,6 +796,9 @@ function renderGenerational() {
     <div style="margin-top:1rem;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-neutral" onclick="genReset()">+ Create Another</button>
       <button class="btn btn-brand"   onclick="app.gen.viewingId=app.gen.lastCreatedId;render()">View Household</button>
+    </div>
+    </div>
+    ${renderUpdateListColumn()}
     </div>`;
   }
 
@@ -791,7 +822,8 @@ function renderGenerational() {
     : [];
 
   return `
-  <div>
+  <div style="display:flex;gap:1.5rem;align-items:flex-start">
+  <div style="flex:1;min-width:0">
 
     <!-- ── Lookup existing generational households ── -->
     <p style="font-weight:700;color:#16325c;font-size:.875rem;margin-bottom:.5rem">
@@ -966,6 +998,8 @@ function renderGenerational() {
 
     ` : ''}
 
+  </div>
+  ${renderUpdateListColumn()}
   </div>`;
 }
 
@@ -983,61 +1017,6 @@ function getBelowThresholdHouseholds() {
     }, 0);
     return { ...h, currentAUM };
   }).filter(h => h.currentAUM < GEN_THRESHOLD);
-}
-
-function renderUpdateList() {
-  const below = getBelowThresholdHouseholds();
-  const saved = loadSaved();
-
-  return `
-  <div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap">
-      <div style="background:#fff3cd;border:1px solid #f4bc25;border-radius:4px;padding:.5rem .875rem;display:flex;align-items:center;gap:8px;flex:1;min-width:220px">
-        <span style="font-size:1.1rem">&#9888;&#65039;</span>
-        <span style="font-size:.8125rem;color:#7a5200;font-weight:600">
-          Generational households listed here have dropped below the $1.5M AUM threshold and require review.
-        </span>
-      </div>
-    </div>
-
-    ${below.length === 0 ? `
-      <div style="text-align:center;padding:2.5rem 1rem;color:#706e6b">
-        <div style="font-size:2rem;margin-bottom:.5rem">&#9989;</div>
-        <p style="font-weight:700;color:#2e844a;margin-bottom:.25rem">All households are above threshold</p>
-        <p style="font-size:.75rem">
-          ${saved.length === 0
-            ? 'No saved generational households yet.'
-            : `All ${saved.length} saved generational household${saved.length !== 1 ? 's' : ''} meet the $1.5M AUM minimum.`}
-        </p>
-      </div>
-    ` : `
-      <p style="font-size:.75rem;color:#706e6b;margin-bottom:.75rem">
-        ${below.length} household${below.length !== 1 ? 's' : ''} below the
-        ${fmtUSD(GEN_THRESHOLD)} minimum — click a row to view details.
-      </p>
-      <div class="selected-list">
-        ${below.map(h => {
-          const shortfall = GEN_THRESHOLD - h.currentAUM;
-          return `
-          <div class="selected-row" style="cursor:pointer;flex-wrap:wrap;gap:6px"
-               onclick="app.gen.viewingId='${h.id}';switchTab('generational')">
-            <div class="selected-row-info" style="flex:1;min-width:180px">
-              <span class="selected-row-name">${escHtml(h.name)}</span>
-              <span class="selected-row-aum">
-                ${fmtUSD(h.currentAUM)} combined AUM &nbsp;·&nbsp; created ${h.createdAt}
-              </span>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-              <span style="background:#fde8e8;color:#ba0517;font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:12px;white-space:nowrap">
-                &#8595; ${fmtUSD(shortfall)} below threshold
-              </span>
-              <span style="font-size:.75rem;color:#0070d2;font-weight:700">View ›</span>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>
-    `}
-  </div>`;
 }
 
 function genSearchInput(val) {
